@@ -1,10 +1,12 @@
 import random
 import time
 from typing import Callable, Dict
+import gym
 import numpy as np
 from pettingzoo.classic import texas_holdem_v4
-from pettingzoo.utils import BaseWrapper
+from pettingzoo.utils import BaseWrapper, env_logger
 from gym.spaces import Discrete
+from stable_baselines3 import PPO
 
 
 class DeltaEnv(BaseWrapper):
@@ -15,11 +17,18 @@ class DeltaEnv(BaseWrapper):
         verbose: bool = False,
         render: bool = False,
     ):
+        """Make this into more of a wrapper?"""
 
         super().__init__(env)
         self.opponent_choose_move = opponent_choose_move
         self.render = render
         self.verbose = verbose
+
+        # TODO: Generalise to different games
+        self.action_space = gym.spaces.Discrete(4)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(72,))
+        # self.logger = env_logger.EnvLogger.get_logger()
+        env_logger.EnvLogger.suppress_output()
 
     @property
     def turn(self) -> str:
@@ -33,11 +42,9 @@ class DeltaEnv(BaseWrapper):
     @property
     def legal_moves(self):
         mask = self.env.last()[0]["action_mask"]
-        full_space = self.action_space(self.turn)
+        full_space = self.action_space
         if not isinstance(full_space, Discrete):
-            raise NotImplementedError(
-                "Currently can only parse legal moves for discrete spaces"
-            )
+            raise NotImplementedError("Currently can only parse legal moves for discrete spaces")
         return np.arange(full_space.n)[mask.astype(bool)]
 
     @property
@@ -61,7 +68,10 @@ class DeltaEnv(BaseWrapper):
                 self.opponent_choose_move(self.observation, self.legal_moves),
             )
 
-        return self.observation, reward, self.done, self.info
+        # Stable baselines requires that you only return the obs
+        # You can get rewarded on the first hand if your opponent folds, but
+        # you won't have taken ny actions so it's probably fine not to know
+        return self.observation
 
     def print_action(self, action):
         """This doesn't generalise to other card games"""
@@ -83,23 +93,26 @@ class DeltaEnv(BaseWrapper):
         if self.verbose:
             self.print_action(action)
 
-        self.env.step(action)
+        if not self.done:
+            self.env.step(action)
         reward = self.env.last()[1]
 
         return reward
 
     def step(self, move: int):
-        # assert (
-        #     not self.done
-        # ), "Game is done! Call reset() before calling step() again :D"
+        # assert not self.done, "Game is done! Call reset() before calling step() again :D"
 
-        reward = self._step(move)
+        if move not in self.legal_moves:
+            # env only gives -1 for an illegal move, but i think they should be punished more
+            reward = -10
+            self._step(move)
+        else:
+            reward = self._step(move)
 
         if not self.done:
-            reward -= self._step(
+            reward = self._step(
                 self.opponent_choose_move(self.observation, self.legal_moves),
             )
-
         return self.observation, reward, self.done, self.info
 
 
@@ -109,9 +122,38 @@ def choose_move_randomly(observation, legal_moves):
     return random.choice(legal_moves)
 
 
-env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=True, render=True)
-observation, reward, done, info = env.reset()
-while not done:
-    action = choose_move_randomly(observation, info["legal_moves"])
+# env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=True, render=True)
+# observation, reward, done, info = env.reset()
+# while not done:
+#     action = choose_move_randomly(observation, info["legal_moves"])
 
-    observation, reward, done, info = env.step(action)
+#     observation, reward, done, info = env.step(action)
+
+
+if __name__ == "__main__":
+    t1 = time.time()
+    env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=False, render=False)
+    env.reset()
+    model = PPO("MlpPolicy", env, verbose=2)
+    model.learn(total_timesteps=400_000)
+    t2 = time.time()
+    print(t2 - t1)
+    model.save("meaty_model")
+
+    test_env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=False, render=False)
+
+    n_test_games = 100
+    rewards = []
+
+    for _ in range(n_test_games):
+        obs = test_env.reset()
+        done = False
+        while not done:
+            action, _states = model.predict(obs, deterministic=True)
+            obs, reward, done, info = test_env.step(action)
+
+        rewards.append(reward)
+
+    print(f"Performance: {np.mean(rewards)}")
+
+    1 / 0

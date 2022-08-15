@@ -2,6 +2,7 @@
 .idea
 .vscode
 run.py
+*.zip
 
 # Custom
 team_*
