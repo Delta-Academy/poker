@@ -3,12 +3,7 @@ from typing import Callable, Dict
 
 import numpy as np
 from gym.spaces import Box, Discrete
-
 from pettingzoo.utils import BaseWrapper, env_logger
-
-
-def wrap_env(env, opponent_choose_move: Callable, verbose: bool, render: bool):
-    return DeltaEnv(env, opponent_choose_move, verbose, render)
 
 
 class DeltaEnv(BaseWrapper):
@@ -64,15 +59,22 @@ class DeltaEnv(BaseWrapper):
         self.player_agent = self.env.agents[0]
         self.opponent_agent = self.env.agents[1]
         reward = 0
+        if self.verbose:
+            print("starting game")
         if self.turn == self.opponent_agent:
-            reward -= self._step(
-                self.opponent_choose_move(self.observation, self.legal_moves),
-            )
+            opponent_move = self.opponent_choose_move(self.observation, self.legal_moves)
+            # Stable baselines requires that you only return the obs from reset
+            # You can get rewarded on the first hand in poker
+            # if your opponent folds, but you won't have taken any actions
+            # so it's maybe fine not to know
+            # For now i've just scrapped this edge case
+            if opponent_move == 2:
+                if self.verbose:
+                    print("edge case resetting")
+                return self.reset()
 
-        # Stable baselines requires that you only return the obs from reset
-        # You can get rewarded on the first hand in poker
-        # if your opponent folds, but you won't have taken any actions
-        # so it's maybe fine not to know
+            reward -= self._step(opponent_move)
+
         return self.observation
 
     def print_action(self, action):
@@ -81,7 +83,7 @@ class DeltaEnv(BaseWrapper):
         player = "Your bot" if self.turn == self.player_agent else "Opponent"
         if action not in self.legal_moves:
             print(f"{player} made an illegal mode: {action}!")
-        if action == 0:
+        elif action == 0:
             print(f"{player} calls!")
         elif action == 1:
             print(f"{player} raises!")
@@ -108,7 +110,7 @@ class DeltaEnv(BaseWrapper):
         if move not in self.legal_moves:
             # env only gives -1 for an illegal move,
             # but i think they should be punished more
-            reward = -10
+            reward = -10.0
             self._step(move)
         else:
             reward = self._step(move)
@@ -117,10 +119,8 @@ class DeltaEnv(BaseWrapper):
             reward = self._step(
                 self.opponent_choose_move(self.observation, self.legal_moves),
             )
+        if self.done and self.verbose:
+            print(f"Game over!! Reward {reward}")
+            print("\n")
+
         return self.observation, reward, self.done, self.info
-
-
-def wrap_env(
-    env, opponent_choose_move: Callable[[np.ndarray, np.ndarray], int], verbose: bool, render: bool
-):
-    return DeltaEnv(env, opponent_choose_move, verbose, render)

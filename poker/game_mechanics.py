@@ -1,20 +1,23 @@
 import random
 from typing import Any, Callable, Dict, Tuple
-from pettingzoo.classic import texas_holdem_v4
 
 import numpy as np
-
-from env_wrapper import DeltaEnv, wrap_env
-
-import numpy as np
-
-from env_wrapper import DeltaEnv, wrap_env
+import torch
 from pettingzoo.classic import texas_holdem_v4
+from stable_baselines3 import PPO
+from torch import nn
+
+from env_wrapper import DeltaEnv
 
 
-def save_pkl(file: Any, team_name: str):
-    """Save a user PKL."""
-    pass
+def checkpoint_model(model: nn.Module, checkpoint_name: str):
+    # torch.save(model, checkpoint_name)
+    model.save(checkpoint_name)
+
+
+def load_checkpoint(checkpoint_name: str):
+    return PPO.load(checkpoint_name)
+    # return torch.load(checkpoint_name)
 
 
 def load_pkl(team_name: str):
@@ -23,9 +26,29 @@ def load_pkl(team_name: str):
 
 
 def choose_move_randomly(observation, legal_moves):
-    # Maybe need this not sure
-    # if len(legal_moves) == 0:
-    #     return None
+    return random.choice(legal_moves)
+
+
+def choose_move_rules(observation, legal_moves):
+    cards = observation[:52]
+    if sum(cards != 0) == 2:
+        # Don't fold before the flop
+        legal_moves = legal_moves[legal_moves != 2]
+        return random.choice(legal_moves)
+
+    suits = cards.reshape(4, 13)
+    # Pair, 3 etc
+    has_matches = np.any(np.sum(suits, 1) > 1)
+    has_aces = np.any(cards[[0, 13, 26, 39]])
+    if has_matches or has_aces:
+        legal_moves = legal_moves[legal_moves != 2]
+        return random.choice(legal_moves)
+    else:
+        return 2
+
+
+def choose_move_never_folds(observation, legal_moves):
+    legal_moves = legal_moves[legal_moves != 2]
     return random.choice(legal_moves)
 
 
