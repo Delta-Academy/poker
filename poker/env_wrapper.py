@@ -1,23 +1,24 @@
-import random
 import time
 from typing import Callable, Dict
-import gym
+
 import numpy as np
-from pettingzoo.classic import texas_holdem_v4
+from gym.spaces import Box, Discrete
+
 from pettingzoo.utils import BaseWrapper, env_logger
-from gym.spaces import Discrete
-from stable_baselines3 import PPO
+
+
+def wrap_env(env, opponent_choose_move: Callable, verbose: bool, render: bool):
+    return DeltaEnv(env, opponent_choose_move, verbose, render)
 
 
 class DeltaEnv(BaseWrapper):
     def __init__(
         self,
         env,
-        opponent_choose_move: Callable[[np.ndarray, np.ndarray], int],
+        opponent_choose_move: Callable,
         verbose: bool = False,
         render: bool = False,
     ):
-        """Make this into more of a wrapper?"""
 
         super().__init__(env)
         self.opponent_choose_move = opponent_choose_move
@@ -25,8 +26,8 @@ class DeltaEnv(BaseWrapper):
         self.verbose = verbose
 
         # TODO: Generalise to different games
-        self.action_space = gym.spaces.Discrete(4)
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(72,))
+        self.action_space = Discrete(4)
+        self.observation_space = Box(low=0, high=1, shape=(72,))
         # self.logger = env_logger.EnvLogger.get_logger()
         env_logger.EnvLogger.suppress_output()
 
@@ -68,15 +69,18 @@ class DeltaEnv(BaseWrapper):
                 self.opponent_choose_move(self.observation, self.legal_moves),
             )
 
-        # Stable baselines requires that you only return the obs
-        # You can get rewarded on the first hand if your opponent folds, but
-        # you won't have taken ny actions so it's probably fine not to know
+        # Stable baselines requires that you only return the obs from reset
+        # You can get rewarded on the first hand in poker
+        # if your opponent folds, but you won't have taken any actions
+        # so it's maybe fine not to know
         return self.observation
 
     def print_action(self, action):
-        """This doesn't generalise to other card games"""
+        """This doesn't generalise to other card games."""
 
-        player = "Your bot" if self.turn == self.player_agent else "opponent"
+        player = "Your bot" if self.turn == self.player_agent else "Opponent"
+        if action not in self.legal_moves:
+            print(f"{player} made an illegal mode: {action}!")
         if action == 0:
             print(f"{player} calls!")
         elif action == 1:
@@ -100,10 +104,10 @@ class DeltaEnv(BaseWrapper):
         return reward
 
     def step(self, move: int):
-        # assert not self.done, "Game is done! Call reset() before calling step() again :D"
 
         if move not in self.legal_moves:
-            # env only gives -1 for an illegal move, but i think they should be punished more
+            # env only gives -1 for an illegal move,
+            # but i think they should be punished more
             reward = -10
             self._step(move)
         else:
@@ -116,44 +120,7 @@ class DeltaEnv(BaseWrapper):
         return self.observation, reward, self.done, self.info
 
 
-def choose_move_randomly(observation, legal_moves):
-    if len(legal_moves) == 0:
-        return None
-    return random.choice(legal_moves)
-
-
-# env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=True, render=True)
-# observation, reward, done, info = env.reset()
-# while not done:
-#     action = choose_move_randomly(observation, info["legal_moves"])
-
-#     observation, reward, done, info = env.step(action)
-
-
-if __name__ == "__main__":
-    t1 = time.time()
-    env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=False, render=False)
-    env.reset()
-    model = PPO("MlpPolicy", env, verbose=2)
-    model.learn(total_timesteps=400_000)
-    t2 = time.time()
-    print(t2 - t1)
-    model.save("meaty_model")
-
-    test_env = DeltaEnv(texas_holdem_v4.env(), choose_move_randomly, verbose=False, render=False)
-
-    n_test_games = 100
-    rewards = []
-
-    for _ in range(n_test_games):
-        obs = test_env.reset()
-        done = False
-        while not done:
-            action, _states = model.predict(obs, deterministic=True)
-            obs, reward, done, info = test_env.step(action)
-
-        rewards.append(reward)
-
-    print(f"Performance: {np.mean(rewards)}")
-
-    1 / 0
+def wrap_env(
+    env, opponent_choose_move: Callable[[np.ndarray, np.ndarray], int], verbose: bool, render: bool
+):
+    return DeltaEnv(env, opponent_choose_move, verbose, render)
