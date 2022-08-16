@@ -112,6 +112,7 @@ class DeltaEnv(BaseWrapper):
             # but i think they should be punished more
             reward = -10.0
             self._step(move)
+            raise ValueError("illegal move")
         else:
             reward = self._step(move)
 

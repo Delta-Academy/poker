@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Tuple
 import numpy as np
 import torch
 from pettingzoo.classic import texas_holdem_v4
+from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO
 from torch import nn
 
@@ -16,7 +17,7 @@ def checkpoint_model(model: nn.Module, checkpoint_name: str):
 
 
 def load_checkpoint(checkpoint_name: str):
-    return PPO.load(checkpoint_name)
+    return MaskablePPO.load(checkpoint_name)
     # return torch.load(checkpoint_name)
 
 

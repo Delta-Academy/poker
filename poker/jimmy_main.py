@@ -3,6 +3,9 @@ from typing import Any, Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
+from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
+from sb3_contrib.common.wrappers import ActionMasker
+from sb3_contrib.ppo_mask import MaskablePPO
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import safe_mean
@@ -56,24 +59,33 @@ class CustomCallback(BaseCallback):
         self.rewards.append(safe_mean([ep_info["r"] for ep_info in self.model.ep_info_buffer]))
 
 
+def mask_fn(env):
+    return env.last()[0]["action_mask"]
+
+
 def train() -> Dict:
     #############
     # Play against hard-coded opponent
 
     env = PokerEnv(choose_move_rules, verbose=True, render=False)
+
+    env = ActionMasker(env, mask_fn)
     env.reset()
 
-    model = PPO("MlpPolicy", env, verbose=2, ent_coef=0.1)
+    model = MaskablePPO(MaskableActorCriticPolicy, env, verbose=2, ent_coef=0.01)
     env.reset()
     # model = PPO.load("checkpoint1")
     # model.set_env(env)
 
     callback = CustomCallback()
-    model.learn(total_timesteps=500_000, callback=callback)
+    t1 = time.time()
+    model.learn(total_timesteps=300_000, callback=callback)
+    model.save("checkpoint1")
+    t2 = time.time()
+    print(t2 - t1)
+    print("reached checkpoint \n\n\n\n\n")
     plt.plot(callback.rewards)
     plt.show()
-    model.save("checkpoint1")
-    print("reached checkpoint \n\n\n\n\n")
     test_model(model)
 
     1 / 0
@@ -95,10 +107,14 @@ def train() -> Dict:
 
 
 def test():
-    choose_move_checkpoint = ChooseMoveCheckpoint("checkpoint1").choose_move
-    test_env = PokerEnv(choose_move_checkpoint, verbose=True, render=True)
+    choose_move_checkpoint = ChooseMoveCheckpoint(
+        "/Users/jamesrowland/Code/poker/poker/checkpoint1.zip"
+    ).choose_move
+    # test_env = PokerEnv(choose_move_checkpoint, verbose=True, render=True)
+    test_env = PokerEnv(choose_move_randomly, verbose=True, render=True)
+    test_env = ActionMasker(test_env, mask_fn)
 
-    model = PPO.load("checkpoint1")
+    model = MaskablePPO.load("/Users/jamesrowland/Code/poker/poker/checkpoint1.zip")
 
     n_test_games = 100
     rewards = []
@@ -107,7 +123,9 @@ def test():
         obs = test_env.reset()
         done = False
         while not done:
-            action, _states = model.predict(obs, deterministic=True)
+            action, _states = model.predict(
+                obs, deterministic=False, action_masks=mask_fn(test_env)
+            )
             obs, reward, done, info = test_env.step(action)
 
         print(f"Game over! Reward {reward}")
@@ -133,8 +151,8 @@ def choose_move(state: Any, user_file: Any, verbose: bool = False) -> int:
 if __name__ == "__main__":
 
     ## Example workflow, feel free to edit this! ###
-    file = train()
-    # test()
+    # file = train()
+    test()
 
     # save_pkl(file, TEAM_NAME)
 
