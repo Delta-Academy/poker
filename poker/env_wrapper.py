@@ -1,9 +1,10 @@
 import time
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 import numpy as np
 from gym.spaces import Box, Discrete
-from pettingzoo.utils import BaseWrapper, env_logger
+
+from pettingzoo.utils import BaseWrapper
 
 
 class DeltaEnv(BaseWrapper):
@@ -20,11 +21,18 @@ class DeltaEnv(BaseWrapper):
         self.render = render
         self.verbose = verbose
 
+        # The player to move first is randomised by the env
+        self.player_agent = "player_0"
+        self.opponent_agent = "player_1"
+
+        self.most_recent_move: Dict[str, Optional[int]] = {
+            self.player_agent: None,
+            self.opponent_agent: None,
+        }
+
         # TODO: Generalise to different games
         self.action_space = Discrete(4)
         self.observation_space = Box(low=0, high=1, shape=(72,))
-        # self.logger = env_logger.EnvLogger.get_logger()
-        env_logger.EnvLogger.suppress_output()
 
     @property
     def turn(self) -> str:
@@ -55,34 +63,34 @@ class DeltaEnv(BaseWrapper):
 
         super().reset()
         assert len(self.env.agents) == 2, "Two agent game required"
-        # The player to move first is randomised by the env
-        self.player_agent = self.env.agents[0]
-        self.opponent_agent = self.env.agents[1]
+        self.most_recent_move = {self.player_agent: None, self.opponent_agent: None}
+
         reward = 0
         if self.verbose:
             print("starting game")
         if self.turn == self.opponent_agent:
             opponent_move = self.opponent_choose_move(self.observation, self.legal_moves)
-            # Stable baselines requires that you only return the obs from reset
+            # Stable baselines requires that you only return the obs from reset.
             # You can get rewarded on the first hand in poker
             # if your opponent folds, but you won't have taken any actions
             # so it's maybe fine not to know
-            # For now i've just scrapped this edge case
             if opponent_move == 2:
                 if self.verbose:
-                    print("edge case resetting")
+                    print("Opponent folds first hand, resetting")
                 return self.reset()
 
             reward -= self._step(opponent_move)
+        if self.render:
+            self.env.render(most_recent_move=self.most_recent_move)
 
         return self.observation
 
     def print_action(self, action):
         """This doesn't generalise to other card games."""
 
-        player = "Your bot" if self.turn == self.player_agent else "Opponent"
+        player = "Player" if self.turn == self.player_agent else "Opponent"
         if action not in self.legal_moves:
-            print(f"{player} made an illegal mode: {action}!")
+            print(f"{player} made an illegal move: {action}!")
         elif action == 0:
             print(f"{player} calls!")
         elif action == 1:
@@ -92,36 +100,41 @@ class DeltaEnv(BaseWrapper):
         elif action == 3:
             print(f"{player} checks!")
 
-    def _step(self, action: int) -> float:
-        if self.render:
-            self.env.render()
-            time.sleep(1)
-        if self.verbose:
-            self.print_action(action)
+    def _step(self, move: int) -> float:
 
-        if not self.done:
-            self.env.step(action)
+        assert not self.done, "Game is done! Please reset() the env before calling step() again"
+        assert move in self.legal_moves, f"{move} is an illegal move"
+
+        self.most_recent_move[self.env.agent_selection] = move
+
+        if self.render:
+            self.env.render(most_recent_move=self.most_recent_move)
+            time.sleep(0.5)
+
+        if self.verbose:
+            self.print_action(move)
+
+        self.env.step(move)
         reward = self.env.last()[1]
 
         return reward
 
     def step(self, move: int):
 
-        if move not in self.legal_moves:
-            # env only gives -1 for an illegal move,
-            # but i think they should be punished more
-            reward = -10.0
-            self._step(move)
-            raise ValueError("illegal move")
-        else:
-            reward = self._step(move)
+        reward = self._step(move)
 
         if not self.done:
             reward = self._step(
                 self.opponent_choose_move(self.observation, self.legal_moves),
             )
-        if self.done and self.verbose:
-            print(f"Game over!! Reward {reward}")
-            print("\n")
+        if self.done:
+            result = "won" if reward > 0 else "lost"
+            msg = f"You {result} {reward*2} chips"
+
+            if self.verbose:
+                print(msg)
+            if self.render:
+                self.env.render(most_recent_move=self.most_recent_move, win_message=msg)
+                time.sleep(2)
 
         return self.observation, reward, self.done, self.info

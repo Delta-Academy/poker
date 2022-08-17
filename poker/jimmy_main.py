@@ -30,23 +30,24 @@ class ChooseMoveCheckpoint:
 
     def choose_move(self, state, legal_moves):
         neural_network = self.neural_network
-        action, _states = neural_network.predict(state, deterministic=True)
+        # action, _states = neural_network.predict(state,
+        mask = np.isin(np.arange(4), legal_moves)
+        action, _ = neural_network.predict(state, deterministic=False, action_masks=mask)
         return action
 
 
-def test_model(model):
-    test_env = PokerEnv(choose_move_randomly, verbose=False, render=False)
-    n_test_games = 100
-    rewards = []
-    for _ in range(n_test_games):
-        obs = test_env.reset()
-        done = False
-        while not done:
-            action, _states = model.predict(obs, deterministic=True)
-            obs, reward, done, info = test_env.step(action)
-        rewards.append(reward)
-    print(f"Performance: {np.mean(rewards)}")
-    1 / 0
+# def test_model(model):
+#     test_env = PokerEnv(choose_move_randomly, verbose=False, render=False)
+#     n_test_games = 100
+#     rewards = []
+#     for _ in range(n_test_games):
+#         obs = test_env.reset()
+#         done = False
+#         while not done:
+#             action, _states = model.predict(obs, deterministic=True)
+#             obs, reward, done, info = test_env.step(action)
+#         rewards.append(reward)
+#     print(f"Performance: {np.mean(rewards)}")
 
 
 class CustomCallback(BaseCallback):
@@ -63,72 +64,114 @@ def mask_fn(env):
     return env.last()[0]["action_mask"]
 
 
+def smooth_trace(trace: np.ndarray, one_sided_window_size: int = 3) -> np.ndarray:
+    """Smooths a trace by averaging over a window of size one_sided_window_size."""
+    window_size = int(2 * one_sided_window_size + 1)
+    trace[one_sided_window_size:-one_sided_window_size] = (
+        np.convolve(trace, np.ones(window_size), mode="valid") / window_size
+    )
+    return trace
+
+
 def train() -> Dict:
+
     #############
     # Play against hard-coded opponent
 
-    env = PokerEnv(choose_move_rules, verbose=True, render=False)
+    # env = PokerEnv(choose_move_rules, verbose=True, render=False)
+    # env = ActionMasker(env, mask_fn)
+    # env.reset()
 
-    env = ActionMasker(env, mask_fn)
-    env.reset()
+    # model = MaskablePPO(MaskableActorCriticPolicy, env, verbose=2, ent_coef=0.01)
 
-    model = MaskablePPO(MaskableActorCriticPolicy, env, verbose=2, ent_coef=0.01)
-    env.reset()
-    # model = PPO.load("checkpoint1")
-    # model.set_env(env)
+    # env.reset()
 
-    callback = CustomCallback()
-    t1 = time.time()
-    model.learn(total_timesteps=300_000, callback=callback)
-    model.save("checkpoint1")
-    t2 = time.time()
-    print(t2 - t1)
-    print("reached checkpoint \n\n\n\n\n")
-    plt.plot(callback.rewards)
-    plt.show()
-    test_model(model)
+    # # model = PPO.load("checkpoint1")
+    # # model.set_env(env)
 
-    1 / 0
+    # callback = CustomCallback()
+    # model.learn(total_timesteps=250_000, callback=callback)
+    # model.save("checkpoint1")
+    # print("reached checkpoint1 \n\n\n\n\n")
+    # plt.plot(smooth_trace(callback.rewards, 100))
+    # plt.draw()
+    # time.sleep(20)
+    # plt.clf()
+
+    # test_model(model)
+
     ################
     # Play checkpointed self
 
     choose_move_checkpoint = ChooseMoveCheckpoint("checkpoint1").choose_move
 
     env = PokerEnv(choose_move_checkpoint, verbose=True, render=False)
+    env = ActionMasker(env, mask_fn)
     env.reset()
 
+    # model = MaskablePPO(MaskableActorCriticPolicy, env, verbose=2, ent_coef=0.01)
+    model = MaskablePPO.load("trained_against_checkpoint_from_scratch")
     model.set_env(env)
 
-    model.learn(total_timesteps=600_000)
+    callback = CustomCallback()
+    model.learn(total_timesteps=750_000, callback=callback)
 
-    model.save("meaty_model")
-    1 / 0
+    model.save("trained_against_checkpoint2")
+    print("reached checkpoint \n\n\n\n\n")
+    plt.plot(smooth_trace(callback.rewards, 2048))
+    plt.title(f"mean: {np.mean(callback.rewards)}, std: {np.std(callback.rewards)}")
+    plt.axhline(0, ":", color="red")
+
+    plt.show()
     return model
 
 
+MOVE_MAP = {
+    0: "Call",
+    1: "Raise",
+    2: "Fold",
+    3: "Check",
+}
+
+
+def human_player(state, legal_moves) -> int:
+    legal_moves_map = {k: v for k, v in MOVE_MAP.items() if k in legal_moves}
+    human_input = input(f"\n\n\nChoose Your Move.\nValid moves: {str(legal_moves_map)}\nMove: ")
+    if human_input not in [str(move) for move in legal_moves]:
+        print(f"Invalid move '{human_input}'! Valid moves are {legal_moves}")
+        move = human_player(state, legal_moves)
+    move = int(human_input)
+    return move
+
+
 def test():
+
     choose_move_checkpoint = ChooseMoveCheckpoint(
         "/Users/jamesrowland/Code/poker/poker/checkpoint1.zip"
     ).choose_move
+
     # test_env = PokerEnv(choose_move_checkpoint, verbose=True, render=True)
-    test_env = PokerEnv(choose_move_randomly, verbose=True, render=True)
+    test_env = PokerEnv(choose_move_checkpoint, verbose=True, render=True)
+
     test_env = ActionMasker(test_env, mask_fn)
 
     model = MaskablePPO.load("/Users/jamesrowland/Code/poker/poker/checkpoint1.zip")
 
-    n_test_games = 100
+    n_test_games = 5
     rewards = []
 
     for _ in range(n_test_games):
         obs = test_env.reset()
         done = False
         while not done:
-            action, _states = model.predict(
-                obs, deterministic=False, action_masks=mask_fn(test_env)
-            )
+            # action, _states = model.predict(
+            #     obs, deterministic=False, action_masks=mask_fn(test_env)
+            # )
+            action = human_player(obs, test_env.legal_moves)
             obs, reward, done, info = test_env.step(action)
 
-        print(f"Game over! Reward {reward}")
+        print(f"Hand Completed Reward {reward}")
+
         print("\n\n\n\n")
 
         rewards.append(reward)
@@ -152,7 +195,8 @@ if __name__ == "__main__":
 
     ## Example workflow, feel free to edit this! ###
     # file = train()
-    test()
+
+    # test()
 
     # save_pkl(file, TEAM_NAME)
 
@@ -179,3 +223,6 @@ if __name__ == "__main__":
     #     render=True,
     #     verbose=False,
     # )
+
+    # file = train()
+    test()

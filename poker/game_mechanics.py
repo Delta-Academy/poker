@@ -1,24 +1,27 @@
 import random
+from pathlib import Path
 from typing import Any, Callable, Dict, Tuple
 
 import numpy as np
 import torch
-from pettingzoo.classic import texas_holdem_v4
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO
 from torch import nn
 
 from env_wrapper import DeltaEnv
+from pettingzoo.classic import texas_holdem_v4
+
+HERE = Path(__file__).parent.resolve()
 
 
 def checkpoint_model(model: nn.Module, checkpoint_name: str):
     # torch.save(model, checkpoint_name)
-    model.save(checkpoint_name)
+    model.save(HERE / checkpoint_name)
 
 
 def load_checkpoint(checkpoint_name: str):
-    return MaskablePPO.load(checkpoint_name)
     # return torch.load(checkpoint_name)
+    return MaskablePPO.load(HERE / checkpoint_name)
 
 
 def load_pkl(team_name: str):
