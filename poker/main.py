@@ -1,29 +1,53 @@
-from typing import Any, Dict
+import numpy as np
+from torch import nn
 
 from check_submission import check_submission
-from game_mechanics import Env, choose_move_randomly, load_pkl, play_game, save_pkl
+from game_mechanics import (
+    ChooseMoveCheckpoint,
+    PokerEnv,
+    checkpoint_model,
+    choose_move_randomly,
+    human_player,
+    load_network,
+    play_poker,
+    save_network,
+)
 
 TEAM_NAME = "Team Name"  # <---- Enter your team name here!
 assert TEAM_NAME != "Team Name", "Please change your TEAM_NAME!"
 
 
-def train() -> Dict:
+def train() -> nn.Module:
     """
-    TODO: Write this function to train your algorithm.
+    TODO: Write this function to train your network.
 
     Returns:
+        pytorch network
     """
+
+    # Below is an example of how to checkpoint your model and
+    # the train against these checkpoints
+    env = PokerEnv(choose_move_randomly)
+    model = ...
+    # Train model in env .........
+    checkpoint_model(model, "checkpoint1")
+    env = PokerEnv(ChooseMoveCheckpoint("checkpoint1", choose_move).choose_move)
+    # Train model in env .........
+
     raise NotImplementedError("You need to implement this function!")
 
 
-def choose_move(state: Any, user_file: Any, verbose: bool = False) -> int:
-    """Called during competitive play. It acts greedily given current state of the board and value
-    function dictionary. It returns a single move to play.
+def choose_move(state: np.ndarray, legal_moves: np.ndarray, neural_network: nn.Module) -> int:
+    """Called during competitive play. It acts greedily given current state of the board and your
+    network. It returns a single move to play.
 
     Args:
-        state:
+         state: The state of poker game. shape = (72,)
+         legal_moves: Legal actions on this turn. Subset of {0, 1, 2, 3}
+         neural_network: Your pytorch network from train()
 
     Returns:
+        action: Single value drawn from legal_moves
     """
     raise NotImplementedError("You need to implement this function!")
 
@@ -31,28 +55,29 @@ def choose_move(state: Any, user_file: Any, verbose: bool = False) -> int:
 if __name__ == "__main__":
 
     ## Example workflow, feel free to edit this! ###
-    file = train()
-    save_pkl(file, TEAM_NAME)
+    neural_network = train()
+    save_network(neural_network, TEAM_NAME)
 
     check_submission(
         TEAM_NAME
     )  # <---- Make sure I pass! Or your solution will not work in the tournament!!
 
-    my_value_fn = load_pkl(TEAM_NAME)
+    neural_network = load_network(TEAM_NAME)
 
     # Code below plays a single game against a random
     #  opponent, think about how you might want to adapt this to
     #  test the performance of your algorithm.
-    def choose_move_no_value_fn(state: Any) -> int:
-        """The arguments in play_game() require functions that only take the state as input.
+    def choose_move_no_network(state: np.ndarray, legal_moves: np.ndarray) -> int:
+        """The arguments in play_poker() require functions that only take the state as input.
 
         This converts choose_move() to that format.
         """
-        return choose_move(state, my_value_fn)
+        return choose_move(state, legal_moves, neural_network)
 
-    play_game(
-        your_choose_move=choose_move_no_value_fn,
-        opponent_choose_move=choose_move_randomly,
+    # Challenge your bot to a game of poker!
+    play_poker(
+        your_choose_move=human_player,
+        opponent_choose_move=choose_move_no_network,
         game_speed_multiplier=1,
         render=True,
         verbose=False,

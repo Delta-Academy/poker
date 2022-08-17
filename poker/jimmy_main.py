@@ -1,3 +1,4 @@
+import copy
 import time
 from typing import Any, Dict
 
@@ -11,14 +12,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import safe_mean
 
 from check_submission import check_submission
-from game_mechanics import (
-    PokerEnv,
-    choose_move_never_folds,
-    choose_move_randomly,
-    choose_move_rules,
-    load_checkpoint,
-    play_game,
-)
+from game_mechanics import PokerEnv, choose_move_randomly, load_checkpoint
 
 TEAM_NAME = "Team Jimmy"  # <---- Enter your team name here!
 assert TEAM_NAME != "Team Name", "Please change your TEAM_NAME!"
@@ -26,28 +20,13 @@ assert TEAM_NAME != "Team Name", "Please change your TEAM_NAME!"
 
 class ChooseMoveCheckpoint:
     def __init__(self, checkpoint_name: str):
-        self.neural_network = load_checkpoint(checkpoint_name)
+        self.neural_network = copy.deepcopy(load_checkpoint(checkpoint_name))
 
     def choose_move(self, state, legal_moves):
         neural_network = self.neural_network
-        # action, _states = neural_network.predict(state,
         mask = np.isin(np.arange(4), legal_moves)
         action, _ = neural_network.predict(state, deterministic=False, action_masks=mask)
         return action
-
-
-# def test_model(model):
-#     test_env = PokerEnv(choose_move_randomly, verbose=False, render=False)
-#     n_test_games = 100
-#     rewards = []
-#     for _ in range(n_test_games):
-#         obs = test_env.reset()
-#         done = False
-#         while not done:
-#             action, _states = model.predict(obs, deterministic=True)
-#             obs, reward, done, info = test_env.step(action)
-#         rewards.append(reward)
-#     print(f"Performance: {np.mean(rewards)}")
 
 
 class CustomCallback(BaseCallback):
@@ -103,45 +82,27 @@ def train() -> Dict:
     ################
     # Play checkpointed self
 
-    choose_move_checkpoint = ChooseMoveCheckpoint("checkpoint1").choose_move
+    choose_move_checkpoint = ChooseMoveCheckpoint("round6").choose_move
 
     env = PokerEnv(choose_move_checkpoint, verbose=True, render=False)
     env = ActionMasker(env, mask_fn)
     env.reset()
 
     # model = MaskablePPO(MaskableActorCriticPolicy, env, verbose=2, ent_coef=0.01)
-    model = MaskablePPO.load("trained_against_checkpoint_from_scratch")
+    model = MaskablePPO.load("round6")
     model.set_env(env)
 
     callback = CustomCallback()
-    model.learn(total_timesteps=750_000, callback=callback)
+    model.learn(total_timesteps=500_000, callback=callback)
 
-    model.save("trained_against_checkpoint2")
+    model.save("round7")
     print("reached checkpoint \n\n\n\n\n")
     plt.plot(smooth_trace(callback.rewards, 2048))
-    plt.title(f"mean: {np.mean(callback.rewards)}, std: {np.std(callback.rewards)}")
-    plt.axhline(0, ":", color="red")
+    plt.title(f"mean: {np.nanmean(callback.rewards)}, std: {np.nanstd(callback.rewards)}")
+    plt.axhline(0)
 
     plt.show()
     return model
-
-
-MOVE_MAP = {
-    0: "Call",
-    1: "Raise",
-    2: "Fold",
-    3: "Check",
-}
-
-
-def human_player(state, legal_moves) -> int:
-    legal_moves_map = {k: v for k, v in MOVE_MAP.items() if k in legal_moves}
-    human_input = input(f"\n\n\nChoose Your Move.\nValid moves: {str(legal_moves_map)}\nMove: ")
-    if human_input not in [str(move) for move in legal_moves]:
-        print(f"Invalid move '{human_input}'! Valid moves are {legal_moves}")
-        move = human_player(state, legal_moves)
-    move = int(human_input)
-    return move
 
 
 def test():
@@ -224,5 +185,6 @@ if __name__ == "__main__":
     #     verbose=False,
     # )
 
-    # file = train()
-    test()
+    file = train()
+
+    # test()

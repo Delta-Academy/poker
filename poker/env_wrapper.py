@@ -14,12 +14,14 @@ class DeltaEnv(BaseWrapper):
         opponent_choose_move: Callable,
         verbose: bool = False,
         render: bool = False,
+        game_speed_multiplier: int = 0,
     ):
 
         super().__init__(env)
         self.opponent_choose_move = opponent_choose_move
         self.render = render
         self.verbose = verbose
+        self.game_speed_multiplier = game_speed_multiplier
 
         # The player to move first is randomised by the env
         self.player_agent = "player_0"
@@ -68,22 +70,14 @@ class DeltaEnv(BaseWrapper):
         reward = 0
         if self.verbose:
             print("starting game")
+        # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
             opponent_move = self.opponent_choose_move(self.observation, self.legal_moves)
-            # Stable baselines requires that you only return the obs from reset.
-            # You can get rewarded on the first hand in poker
-            # if your opponent folds, but you won't have taken any actions
-            # so it's maybe fine not to know
-            if opponent_move == 2:
-                if self.verbose:
-                    print("Opponent folds first hand, resetting")
-                return self.reset()
-
             reward -= self._step(opponent_move)
         if self.render:
-            self.env.render(most_recent_move=self.most_recent_move)
+            self.env.render(most_recent_move=self.most_recent_move, render_opponent_cards=False)
 
-        return self.observation
+        return self.observation, reward, self.done, self.info
 
     def print_action(self, action):
         """This doesn't generalise to other card games."""
@@ -107,14 +101,16 @@ class DeltaEnv(BaseWrapper):
 
         self.most_recent_move[self.env.agent_selection] = move
 
-        if self.render:
-            self.env.render(most_recent_move=self.most_recent_move)
-            time.sleep(0.5)
-
         if self.verbose:
             self.print_action(move)
+            time.sleep(1 / self.game_speed_multiplier)
 
         self.env.step(move)
+
+        if self.render:
+            self.env.render(most_recent_move=self.most_recent_move, render_opponent_cards=False)
+            time.sleep(1 / self.game_speed_multiplier)
+
         reward = self.env.last()[1]
 
         return reward
@@ -129,12 +125,15 @@ class DeltaEnv(BaseWrapper):
             )
         if self.done:
             result = "won" if reward > 0 else "lost"
-            msg = f"You {result} {reward*2} chips"
+            msg = f"You {result} {abs(reward*2)} chips"
 
             if self.verbose:
                 print(msg)
             if self.render:
-                self.env.render(most_recent_move=self.most_recent_move, win_message=msg)
-                time.sleep(2)
+                self.env.render(
+                    most_recent_move=self.most_recent_move,
+                    win_message=msg,
+                    render_opponent_cards=True,
+                )
 
         return self.observation, reward, self.done, self.info
