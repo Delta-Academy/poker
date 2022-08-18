@@ -1,5 +1,7 @@
+# Hack as this won't pip install on replit
 import copy
 import random
+import sys
 import time
 from pathlib import Path
 from typing import Callable
@@ -12,8 +14,10 @@ from torch import nn
 from env_wrapper import DeltaEnv
 from pettingzoo.classic import texas_holdem_v4
 
-HERE = Path(__file__).parent.resolve()
+sys.path.append("/home/runner/Poker/PettingZoo")
 
+
+HERE = Path(__file__).parent.resolve()
 
 # How ints map to actions in poker
 ACTION_MAP = {

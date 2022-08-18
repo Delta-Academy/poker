@@ -75,7 +75,13 @@ class DeltaEnv(BaseWrapper):
             opponent_move = self.opponent_choose_move(self.observation, self.legal_moves)
             reward -= self._step(opponent_move)
         if self.render:
-            self.env.render(most_recent_move=self.most_recent_move, render_opponent_cards=False)
+            # If the opponent folds on the first hand, win message
+            win_message = None if not self.done else f"You won {abs(reward*2)} chips"
+            self.env.render(
+                most_recent_move=self.most_recent_move,
+                render_opponent_cards=False,
+                win_message=win_message,
+            )
 
         return self.observation, reward, self.done, self.info
 
