@@ -57,6 +57,7 @@ class DeltaEnv(BaseWrapper):
             assert sum(cards == 1) == 2
             assert sum(cards == -1) in [3, 4, 5]
             assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
+            assert np.all(np.isin(obs[52:], [0, 1]))
         obs[:52] = cards
         return obs
 
@@ -79,6 +80,7 @@ class DeltaEnv(BaseWrapper):
     def reset(self):
 
         super().reset()
+
         assert len(self.env.agents) == 2, "Two agent game required"
         self.most_recent_move = {self.player_agent: None, self.opponent_agent: None}
         # Which elements of the obs vector are in the hand?
