@@ -42,8 +42,23 @@ class DeltaEnv(BaseWrapper):
 
     @property
     def observation(self):
-        # Not sure all last[0] obs are dicts for all envs?
-        return self.env.last()[0]["observation"]
+        # This doesn't generalise across envs
+        obs = self.env.last()[0]["observation"]
+        cards = obs[:52]
+
+        if len(self.hand_idx[self.turn]) == 0:
+            assert np.sum(cards) == 2
+            self.hand_idx[self.turn] = list(np.where(cards)[0])
+        else:
+            cards = -cards
+            cards[self.hand_idx[self.turn]] *= -1
+
+        if np.sum(cards != 0) > 2:
+            assert sum(cards == 1) == 2
+            assert sum(cards == -1) in [3, 4, 5]
+            assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
+        obs[:52] = cards
+        return obs
 
     @property
     def legal_moves(self):
@@ -66,7 +81,11 @@ class DeltaEnv(BaseWrapper):
         super().reset()
         assert len(self.env.agents) == 2, "Two agent game required"
         self.most_recent_move = {self.player_agent: None, self.opponent_agent: None}
-
+        # Which elements of the obs vector are in the hand?
+        self.hand_idx = {
+            self.player_agent: [],
+            self.opponent_agent: [],
+        }
         reward = 0
         if self.verbose:
             print("starting game")
