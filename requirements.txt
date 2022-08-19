@@ -3,6 +3,5 @@ pygame
 tqdm
 delta-utils
 gym
-pettingzoo
 rlcard
 git+https://github.com/Delta-Academy/PettingZoo.git@update-poker-visuals

@@ -14,11 +14,7 @@ from torch import nn
 from env_wrapper import DeltaEnv
 from pettingzoo.classic import texas_holdem_v4
 
-sys.path.append("/home/runner/Poker/PettingZoo")
-
-
 HERE = Path(__file__).parent.resolve()
-
 # How ints map to actions in poker
 ACTION_MAP = {
     0: "Call",

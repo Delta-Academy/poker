@@ -18,6 +18,7 @@ class DeltaEnv(BaseWrapper):
     ):
 
         super().__init__(env)
+
         self.opponent_choose_move = opponent_choose_move
         self.render = render
         self.verbose = verbose
@@ -47,8 +48,10 @@ class DeltaEnv(BaseWrapper):
         cards = obs[:52]
 
         if len(self.hand_idx[self.turn]) == 0:
+
             assert np.sum(cards) == 2
             self.hand_idx[self.turn] = list(np.where(cards)[0])
+
         else:
             cards = -cards
             cards[self.hand_idx[self.turn]] *= -1
@@ -58,6 +61,7 @@ class DeltaEnv(BaseWrapper):
             assert sum(cards == -1) in [3, 4, 5]
             assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
             assert np.all(np.isin(obs[52:], [0, 1]))
+
         obs[:52] = cards
         return obs
 
@@ -77,6 +81,14 @@ class DeltaEnv(BaseWrapper):
     def done(self) -> bool:
         return self.env.last()[2]
 
+    def render_game(self, render_opponent_cards=False, win_message=None) -> None:
+        self.env.render(
+            most_recent_move=self.most_recent_move,
+            render_opponent_cards=render_opponent_cards,
+            win_message=win_message,
+        )
+        time.sleep(1 / self.game_speed_multiplier)
+
     def reset(self):
 
         super().reset()
@@ -93,16 +105,14 @@ class DeltaEnv(BaseWrapper):
             print("starting game")
         # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
-            opponent_move = self.opponent_choose_move(self.observation, self.legal_moves)
+            opponent_move = self.opponent_choose_move(
+                state=self.observation, legal_moves=self.legal_moves
+            )
             reward -= self._step(opponent_move)
         if self.render:
             # If the opponent folds on the first hand, win message
             win_message = None if not self.done else f"You won {abs(reward*2)} chips"
-            self.env.render(
-                most_recent_move=self.most_recent_move,
-                render_opponent_cards=False,
-                win_message=win_message,
-            )
+            self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info
 
@@ -130,13 +140,12 @@ class DeltaEnv(BaseWrapper):
 
         if self.verbose:
             self.print_action(move)
-            time.sleep(1 / self.game_speed_multiplier)
 
         self.env.step(move)
 
         if self.render:
-            self.env.render(most_recent_move=self.most_recent_move, render_opponent_cards=False)
-            time.sleep(1 / self.game_speed_multiplier)
+            self.render_game(render_opponent_cards=False, win_message=None)
+            # self.env.render(most_recent_move=self.most_recent_move, render_opponent_cards=False)
 
         reward = self.env.last()[1]
 
@@ -148,7 +157,7 @@ class DeltaEnv(BaseWrapper):
 
         if not self.done:
             reward = self._step(
-                self.opponent_choose_move(self.observation, self.legal_moves),
+                self.opponent_choose_move(state=self.observation, legal_moves=self.legal_moves),
             )
         if self.done:
             result = "won" if reward > 0 else "lost"
