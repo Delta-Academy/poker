@@ -36,6 +36,7 @@ class DeltaEnv(BaseWrapper):
         # TODO: Generalise to different games
         self.action_space = Discrete(4)
         self.observation_space = Box(low=0, high=1, shape=(72,))
+        # super().reset()
 
     @property
     def turn(self) -> str:
@@ -81,11 +82,15 @@ class DeltaEnv(BaseWrapper):
     def done(self) -> bool:
         return self.env.last()[2]
 
-    def render_game(self, render_opponent_cards=False, win_message=None) -> None:
+    def render_game(
+        self, render_opponent_cards=False, win_message=None, screen=None, player_names=None
+    ) -> None:
         self.env.render(
             most_recent_move=self.most_recent_move,
             render_opponent_cards=render_opponent_cards,
             win_message=win_message,
+            screen=screen,
+            player_names=player_names,
         )
         time.sleep(1 / self.game_speed_multiplier)
 
