@@ -3,7 +3,6 @@ from typing import Callable, Dict, Optional
 
 import numpy as np
 from gym.spaces import Box, Discrete
-
 from pettingzoo.utils import BaseWrapper
 
 
@@ -36,7 +35,6 @@ class DeltaEnv(BaseWrapper):
         # TODO: Generalise to different games
         self.action_space = Discrete(4)
         self.observation_space = Box(low=0, high=1, shape=(72,))
-        # super().reset()
 
     @property
     def turn(self) -> str:
@@ -116,7 +114,8 @@ class DeltaEnv(BaseWrapper):
             reward -= self._step(opponent_move)
         if self.render:
             # If the opponent folds on the first hand, win message
-            win_message = None if not self.done else f"You won {abs(reward*2)} chips"
+            # win_message = None if not self.done else f"You won {abs(reward*2)} chips"
+            win_message = None
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info
@@ -150,11 +149,8 @@ class DeltaEnv(BaseWrapper):
 
         if self.render:
             self.render_game(render_opponent_cards=False, win_message=None)
-            # self.env.render(most_recent_move=self.most_recent_move, render_opponent_cards=False)
 
-        reward = self.env.last()[1]
-
-        return reward
+        return self.env.last()[1]
 
     def step(self, move: int):
 

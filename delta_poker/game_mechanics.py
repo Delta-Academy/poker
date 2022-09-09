@@ -1,18 +1,16 @@
 # Hack as this won't pip install on replit
 import copy
 import random
-import sys
-import time
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
 import pygame
 import torch
+from pettingzoo.classic import texas_holdem_v4
 from torch import nn
 
 from env_wrapper import DeltaEnv
-from pettingzoo.classic import texas_holdem_v4
 
 HERE = Path(__file__).parent.resolve()
 # How ints map to actions in poker
@@ -24,7 +22,7 @@ ACTION_MAP = {
 }
 
 
-def choose_move_randomly(observation, legal_moves):
+def choose_move_randomly(state: np.ndarray, legal_moves: np.ndarray):
     return random.choice(legal_moves)
 
 
@@ -80,11 +78,11 @@ def PokerEnv(
     )
 
 
-def human_player(state, legal_moves) -> int:
+def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
     legal_moves_map = {k: v for k, v in ACTION_MAP.items() if k in legal_moves}
 
     while True:
-        move = input(f"\n\n\nChoose Your Move.\nValid moves: {str(legal_moves_map)}\nMove: ")
+        move = input(f"\n\n\nChoose Your Move.\nValid moves: {(legal_moves_map)}\nMove: ")
         if move not in [str(move) for move in legal_moves]:
             print(f"Invalid move '{move}'! Valid moves are: {legal_moves}")
         else:
