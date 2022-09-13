@@ -3,13 +3,13 @@ from typing import Callable, Dict, Optional
 
 import numpy as np
 from gym.spaces import Box, Discrete
-from pettingzoo.utils import BaseWrapper
+from pettingzoo.utils import AECEnv, BaseWrapper
 
 
 class DeltaEnv(BaseWrapper):
     def __init__(
         self,
-        env,
+        env: AECEnv,
         opponent_choose_move: Callable,
         verbose: bool = False,
         render: bool = False,

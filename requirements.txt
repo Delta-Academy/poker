@@ -4,4 +4,4 @@ tqdm
 delta-utils
 gym
 rlcard
-git+https://github.com/Delta-Academy/PettingZoo.git@update-poker-visuals
+git+https://github.com/Delta-Academy/PettingZoo.git

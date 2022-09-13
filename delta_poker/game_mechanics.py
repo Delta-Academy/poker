@@ -82,13 +82,13 @@ def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
     legal_moves_map = {k: v for k, v in ACTION_MAP.items() if k in legal_moves}
 
     while True:
-        move = input(f"\n\n\nChoose Your Move.\nValid moves: {(legal_moves_map)}\nMove: ")
-        if move not in [str(move) for move in legal_moves]:
-            print(f"Invalid move '{move}'! Valid moves are: {legal_moves}")
+        player_move = input(f"\n\n\nChoose Your Move.\nValid moves: {(legal_moves_map)}\nMove: ")
+        if player_move not in [str(move) for move in legal_moves]:
+            print(f"Invalid move '{player_move}'! Valid moves are: {legal_moves}")
         else:
             break
 
-    return int(move)
+    return int(player_move)
 
 
 class ChooseMoveCheckpoint:
