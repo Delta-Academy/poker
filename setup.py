@@ -1,10 +1,10 @@
-from setuptools import find_packages, setup
+from setuptools import setup
 
 setup(
-    name="delta_GAME",
+    name="delta_poker",
     version="0.1",
-    packages=["delta_GAME"],
-    description="DESCRIPTION OF GAME",
-    author="AUTHOR",
-    author_email="AUTHOR-EMAIL",
+    packages=["delta_poker"],
+    description="Poker",
+    author="neuromantic99",
+    author_email="james@learney.me",
 )
