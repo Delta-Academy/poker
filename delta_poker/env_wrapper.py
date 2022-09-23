@@ -1,9 +1,38 @@
 import time
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
+import pygame
+import pygame.gfxdraw
 from gym.spaces import Box, Discrete
+
 from pettingzoo.utils import AECEnv, BaseWrapper
+
+BLACK_COLOR = (21, 26, 26)
+WHITE_COLOR = (255, 255, 255)
+GREY_COLOR = (150, 159, 167)
+
+# Graphics consts
+FULL_WIDTH = 400
+FULL_HEIGHT = 600
+
+# Table is the game rendered by PettingZoo
+TABLE_WIDTH = 300
+TABLE_HEIGHT = 500
+TABLE_ORIGIN = ((FULL_WIDTH - TABLE_WIDTH) // 2, 0)
+
+# Clickable buttons
+GAP_BETWEEN_BUTTONS = 10
+BUTTON_MARGIN_HORIZONTAL = (FULL_WIDTH - TABLE_WIDTH) // 2
+BUTTON_MARGIN_VERTICAL = 10
+BUTTON_DIM = (FULL_WIDTH - BUTTON_MARGIN_HORIZONTAL * 2 - 4 * GAP_BETWEEN_BUTTONS) // 4
+
+
+def get_button_origins(idx: int) -> Tuple[int, int]:
+    return (
+        BUTTON_MARGIN_HORIZONTAL + idx * (BUTTON_DIM + GAP_BETWEEN_BUTTONS),
+        TABLE_ORIGIN[1] + TABLE_HEIGHT + BUTTON_MARGIN_VERTICAL,
+    )
 
 
 class DeltaEnv(BaseWrapper):
@@ -35,6 +64,21 @@ class DeltaEnv(BaseWrapper):
         # TODO: Generalise to different games
         self.action_space = Discrete(4)
         self.observation_space = Box(low=0, high=1, shape=(72,))
+
+        if render:
+            pygame.init()
+            self._font = pygame.font.SysFont("arial", 22)
+
+            self._screen = pygame.display.set_mode((FULL_WIDTH, FULL_HEIGHT))
+
+            self.subsurf = self._screen.subsurface(
+                (
+                    TABLE_ORIGIN[0],
+                    TABLE_ORIGIN[1],
+                    TABLE_WIDTH,
+                    TABLE_HEIGHT,
+                )
+            )
 
     @property
     def turn(self) -> str:
@@ -83,14 +127,51 @@ class DeltaEnv(BaseWrapper):
     def render_game(
         self, render_opponent_cards=False, win_message=None, screen=None, player_names=None
     ) -> None:
+
+        self._screen.fill((7, 99, 36))  # green background
         self.env.render(
             most_recent_move=self.most_recent_move,
             render_opponent_cards=render_opponent_cards,
             win_message=win_message,
-            screen=screen,
+            screen=self.subsurf,
             player_names=player_names,
         )
+        self.draw_possible_actions()
+        pygame.display.update()
         time.sleep(1 / self.game_speed_multiplier)
+
+    def draw_possible_actions(self):
+
+        for idx, action in enumerate(["call", "raise", "fold", "check"]):
+            self.draw_action(action, idx, idx in self.legal_moves)
+
+    def draw_action(self, action: str, idx: int, legal: bool) -> None:
+
+        x_pos, y_pos = get_button_origins(idx)
+
+        rect = (
+            pygame.Rect(
+                x_pos,
+                y_pos,
+                BUTTON_DIM,
+                BUTTON_DIM,
+            ),
+        )
+        color = WHITE_COLOR if legal else GREY_COLOR
+        pygame.gfxdraw.rectangle(
+            self._screen,
+            rect,
+            color,
+        )
+
+        text = self._font.render(action, True, color)
+        self._screen.blit(
+            text,
+            (
+                x_pos + BUTTON_DIM // 2 - text.get_width() // 2,
+                y_pos + BUTTON_DIM // 2 - text.get_height() // 2,
+            ),
+        )
 
     def reset(self):
 
@@ -114,8 +195,7 @@ class DeltaEnv(BaseWrapper):
             reward -= self._step(opponent_move)
         if self.render:
             # If the opponent folds on the first hand, win message
-            # win_message = None if not self.done else f"You won {abs(reward*2)} chips"
-            win_message = None
+            win_message = f"You won {abs(reward * 2)} chips" if self.done else None
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info
@@ -167,10 +247,6 @@ class DeltaEnv(BaseWrapper):
             if self.verbose:
                 print(msg)
             if self.render:
-                self.env.render(
-                    most_recent_move=self.most_recent_move,
-                    win_message=msg,
-                    render_opponent_cards=True,
-                )
+                self.render_game(render_opponent_cards=True, win_message=msg)
 
         return self.observation, reward, self.done, self.info

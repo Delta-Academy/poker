@@ -2,24 +2,17 @@
 import copy
 import random
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
 import pygame
 import torch
-from pettingzoo.classic import texas_holdem_v4
 from torch import nn
 
-from env_wrapper import DeltaEnv
+from env_wrapper import BUTTON_DIM, DeltaEnv, get_button_origins
+from pettingzoo.classic import texas_holdem_v4
 
 HERE = Path(__file__).parent.resolve()
-# How ints map to actions in poker
-ACTION_MAP = {
-    0: "Call",
-    1: "Raise",
-    2: "Fold",
-    3: "Check",
-}
 
 
 def choose_move_randomly(state: np.ndarray, legal_moves: np.ndarray):
@@ -78,17 +71,30 @@ def PokerEnv(
     )
 
 
+def click_in_button(pos: Tuple[int, int], idx) -> bool:
+
+    x_pos, y_pos = get_button_origins(idx)
+
+    return (
+        pos[0] > x_pos
+        and pos[0] < x_pos + BUTTON_DIM
+        and pos[1] > y_pos
+        and pos[1] < y_pos + BUTTON_DIM
+    )
+
+
+LEFT = 1
+
+
 def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
-    legal_moves_map = {k: v for k, v in ACTION_MAP.items() if k in legal_moves}
-
     while True:
-        player_move = input(f"\n\n\nChoose Your Move.\nValid moves: {(legal_moves_map)}\nMove: ")
-        if player_move not in [str(move) for move in legal_moves]:
-            print(f"Invalid move '{player_move}'! Valid moves are: {legal_moves}")
-        else:
-            break
-
-    return int(player_move)
+        ev = pygame.event.get()
+        for event in ev:
+            if event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
+                pos = pygame.mouse.get_pos()
+                for idx in range(4):
+                    if click_in_button(pos, idx) and idx in legal_moves:
+                        return idx
 
 
 class ChooseMoveCheckpoint:
