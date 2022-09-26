@@ -61,7 +61,7 @@ def PokerEnv(
     verbose: bool = False,
     render: bool = False,
     game_speed_multiplier: int = 0,
-):
+) -> DeltaEnv:
     return DeltaEnv(
         texas_holdem_v4.env(),
         opponent_choose_move,
