@@ -36,7 +36,7 @@ def get_button_origins(idx: int) -> Tuple[int, int]:
 
 
 class DeltaEnv(BaseWrapper):
-    STARTING_MONEY = 50
+    STARTING_MONEY = 200
 
     def __init__(
         self,
@@ -140,8 +140,14 @@ class DeltaEnv(BaseWrapper):
             player_names=player_names,
         )
 
-        self.env.env.env.env.draw_chips(int(self.opponent_total), 0, int(FULL_HEIGHT * 0.12))
-        self.env.env.env.env.draw_chips(int(self.player_total), 0, int(FULL_HEIGHT * 0.66))
+        possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
+
+        self.env.env.env.env.draw_chips(
+            int(possible_chips(self.opponent_total)), 0, int(FULL_HEIGHT * 0.15)
+        )
+        self.env.env.env.env.draw_chips(
+            int(possible_chips(self.player_total)), 0, int(FULL_HEIGHT * 0.66)
+        )
         self.draw_possible_actions()
 
         pygame.display.update()
@@ -182,6 +188,9 @@ class DeltaEnv(BaseWrapper):
 
     def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
 
+        if self.player_total < 0 or self.opponent_total < 0:
+            return self.observation, 0, True, {}
+
         super().reset()
 
         assert len(self.env.agents) == 2, "Two agent game required"
@@ -205,7 +214,7 @@ class DeltaEnv(BaseWrapper):
             win_message = f"You won {int(abs(reward * 2))} chips" if self.done else None
             if self.done:
                 self.player_total -= int(reward * 2)
-                self.opponent_total = int(reward * 2)
+                self.opponent_total += int(reward * 2)
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info

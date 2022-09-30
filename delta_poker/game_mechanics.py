@@ -87,6 +87,7 @@ LEFT = 1
 
 
 def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
+    print("Your move, click to choose!")
     while True:
         ev = pygame.event.get()
         for event in ev:
