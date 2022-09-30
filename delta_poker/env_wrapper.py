@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pygame
@@ -36,6 +36,8 @@ def get_button_origins(idx: int) -> Tuple[int, int]:
 
 
 class DeltaEnv(BaseWrapper):
+    STARTING_MONEY = 200
+
     def __init__(
         self,
         env: AECEnv,
@@ -46,6 +48,7 @@ class DeltaEnv(BaseWrapper):
     ):
 
         super().__init__(env)
+        self.player_total = self.opponent_total = self.STARTING_MONEY
 
         self.opponent_choose_move = opponent_choose_move
         self.render = render
@@ -85,7 +88,7 @@ class DeltaEnv(BaseWrapper):
         return self.env.agent_selection
 
     @property
-    def observation(self):
+    def observation(self) -> np.ndarray:
         # This doesn't generalise across envs
         obs = self.env.last()[0]["observation"]
         cards = obs[:52]
@@ -136,7 +139,17 @@ class DeltaEnv(BaseWrapper):
             screen=self.subsurf,
             player_names=player_names,
         )
+
+        possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
+
+        self.env.env.env.env.draw_chips(
+            int(possible_chips(self.opponent_total)), 0, int(FULL_HEIGHT * 0.15)
+        )
+        self.env.env.env.env.draw_chips(
+            int(possible_chips(self.player_total)), 0, int(FULL_HEIGHT * 0.66)
+        )
         self.draw_possible_actions()
+
         pygame.display.update()
         time.sleep(1 / self.game_speed_multiplier)
 
@@ -173,18 +186,21 @@ class DeltaEnv(BaseWrapper):
             ),
         )
 
-    def reset(self):
+    def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
+
+        if self.player_total < 0 or self.opponent_total < 0:
+            return self.observation, 0, True, {}
 
         super().reset()
 
         assert len(self.env.agents) == 2, "Two agent game required"
         self.most_recent_move = {self.player_agent: None, self.opponent_agent: None}
         # Which elements of the obs vector are in the hand?
-        self.hand_idx = {
+        self.hand_idx: Dict[str, List] = {
             self.player_agent: [],
             self.opponent_agent: [],
         }
-        reward = 0
+        reward = 0.0
         if self.verbose:
             print("starting game")
         # Take a step if opponent goes first, so step() starts with player
@@ -195,7 +211,10 @@ class DeltaEnv(BaseWrapper):
             reward -= self._step(opponent_move)
         if self.render:
             # If the opponent folds on the first hand, win message
-            win_message = f"You won {abs(reward * 2)} chips" if self.done else None
+            win_message = f"You won {int(abs(reward * 2))} chips" if self.done else None
+            if self.done:
+                self.player_total -= int(reward * 2)
+                self.opponent_total += int(reward * 2)
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info
@@ -232,7 +251,7 @@ class DeltaEnv(BaseWrapper):
 
         return self.env.last()[1]
 
-    def step(self, move: int):
+    def step(self, move: int) -> Tuple[np.ndarray, float, bool, Dict]:
 
         reward = self._step(move)
 
@@ -242,7 +261,10 @@ class DeltaEnv(BaseWrapper):
             )
         if self.done:
             result = "won" if reward > 0 else "lost"
-            msg = f"You {result} {abs(reward*2)} chips"
+            msg = f"You {result} {int(abs(reward*2))} chips"
+
+            self.player_total += int(reward * 2)
+            self.opponent_total -= int(reward * 2)
 
             if self.verbose:
                 print(msg)

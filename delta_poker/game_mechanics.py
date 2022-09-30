@@ -61,7 +61,7 @@ def PokerEnv(
     verbose: bool = False,
     render: bool = False,
     game_speed_multiplier: int = 0,
-):
+) -> DeltaEnv:
     return DeltaEnv(
         texas_holdem_v4.env(),
         opponent_choose_move,
@@ -87,6 +87,7 @@ LEFT = 1
 
 
 def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
+    print("Your move, click to choose!")
     while True:
         ev = pygame.event.get()
         for event in ev:
