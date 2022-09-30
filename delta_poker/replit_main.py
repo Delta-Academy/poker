@@ -8,7 +8,9 @@ from torch import nn
 
 from game_mechanics import HERE, PokerEnv, human_player, wait_for_click
 
-NEURAL_NETWORK = MaskablePPO.load(HERE / "saved_network")
+NEURAL_NETWORK = MaskablePPO.load(
+    "/Users/jamesrowland/Code/poker/delta_poker/nolimit_checkpoint1.zip"
+)
 
 
 def bot_choose_move(state: np.ndarray, legal_moves: np.ndarray) -> int:
@@ -25,7 +27,7 @@ def bot_choose_move(state: np.ndarray, legal_moves: np.ndarray) -> int:
     """
 
     state = np.abs(state)
-    mask = np.isin(np.arange(4), legal_moves)
+    mask = np.isin(np.arange(5), legal_moves)
     action, _ = NEURAL_NETWORK.predict(state, deterministic=False, action_masks=mask)
     return action
 
@@ -51,8 +53,12 @@ def play_poker(
     env = ActionMasker(env, mask_fn)
 
     while True:
-        observation, reward, done, info = env.reset()
+        # observation, reward, done, info = env.reset()
+        observation = env.reset()
 
+        done = False
+        info = {}
+        info["legal_moves"] = [0, 1, 2, 3]
         while not done:
             action = choose_move(observation, info["legal_moves"])
             observation, reward, done, info = env.step(action)

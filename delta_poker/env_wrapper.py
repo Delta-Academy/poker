@@ -22,10 +22,21 @@ TABLE_HEIGHT = 500
 TABLE_ORIGIN = ((FULL_WIDTH - TABLE_WIDTH) // 2, 0)
 
 # Clickable buttons
+N_BUTTONS = 5
 GAP_BETWEEN_BUTTONS = 10
 BUTTON_MARGIN_HORIZONTAL = (FULL_WIDTH - TABLE_WIDTH) // 2
 BUTTON_MARGIN_VERTICAL = 10
-BUTTON_DIM = (FULL_WIDTH - BUTTON_MARGIN_HORIZONTAL * 2 - 4 * GAP_BETWEEN_BUTTONS) // 4
+BUTTON_DIM = (
+    FULL_WIDTH - BUTTON_MARGIN_HORIZONTAL * 2 - N_BUTTONS * GAP_BETWEEN_BUTTONS
+) // N_BUTTONS
+
+MOVE_MAP: Dict[int, str] = {
+    0: "fold",
+    1: "call\ncheck",
+    2: "raise\nhalf\npot",
+    3: "raise\nfull\npot",
+    4: "all\nin",
+}
 
 
 def get_button_origins(idx: int) -> Tuple[int, int]:
@@ -64,9 +75,9 @@ class DeltaEnv(BaseWrapper):
             self.opponent_agent: None,
         }
 
-        # TODO: Generalise to different games
-        self.action_space = Discrete(4)
-        self.observation_space = Box(low=0, high=1, shape=(72,))
+        self.action_space = Discrete(5)
+
+        self.observation_space = Box(low=0, high=100, shape=(54,))
 
         if render:
             pygame.init()
@@ -106,7 +117,8 @@ class DeltaEnv(BaseWrapper):
             assert sum(cards == 1) == 2
             assert sum(cards == -1) in [3, 4, 5]
             assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
-            assert np.all(np.isin(obs[52:], [0, 1]))
+            # How the chips are represented is changed compared to limit
+            # assert np.all(np.isin(obs[52:], [0, 1]))
 
         obs[:52] = cards
         return obs
@@ -155,7 +167,7 @@ class DeltaEnv(BaseWrapper):
 
     def draw_possible_actions(self):
 
-        for idx, action in enumerate(["call", "raise", "fold", "check"]):
+        for idx, action in MOVE_MAP.items():
             self.draw_action(action, idx, idx in self.legal_moves)
 
     def draw_action(self, action: str, idx: int, legal: bool) -> None:
@@ -178,18 +190,23 @@ class DeltaEnv(BaseWrapper):
         )
 
         text = self._font.render(action, True, color)
-        self._screen.blit(
-            text,
-            (
-                x_pos + BUTTON_DIM // 2 - text.get_width() // 2,
-                y_pos + BUTTON_DIM // 2 - text.get_height() // 2,
-            ),
-        )
+        # self._screen.blit(
+        #     text,
+        #     (
+        #         x_pos + BUTTON_DIM // 2 - text.get_width() // 2,
+        #         y_pos + BUTTON_DIM // 2 - text.get_height() // 2,
+        #     ),
+        # )
+
+        x_pos = x_pos + BUTTON_DIM // 2 - text.get_width() // 2
+        y_pos = y_pos + BUTTON_DIM // 2 - text.get_height() // 2
+        self.render_multi_line(action, x_pos, y_pos, self._font.get_height())
 
     def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
 
-        if self.player_total < 0 or self.opponent_total < 0:
-            return self.observation, 0, True, {}
+        # if self.player_total < 0 or self.opponent_total < 0:
+        #     # return self.observation, 0, True, {}
+        #     return
 
         super().reset()
 
@@ -217,22 +234,27 @@ class DeltaEnv(BaseWrapper):
                 self.opponent_total += int(reward * 2)
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
-        return self.observation, reward, self.done, self.info
+        # return self.observation, reward, self.done, self.info
+        return self.observation
 
     def print_action(self, action):
-        """This doesn't generalise to other card games."""
 
         player = "Player" if self.turn == self.player_agent else "Opponent"
         if action not in self.legal_moves:
             print(f"{player} made an illegal move: {action}!")
-        elif action == 0:
-            print(f"{player} calls!")
-        elif action == 1:
-            print(f"{player} raises!")
-        elif action == 2:
-            print(f"{player} folds!")
-        elif action == 3:
-            print(f"{player} checks!")
+        else:
+            print(f"{player} {MOVE_MAP[action]}!")
+
+        # elif action == 0:
+        #     print(f"{player} folds!")
+        # elif action == 1:
+        #     print(f"{player} calls/checks!")
+        # elif action == 2:
+        #     print(f"{player} raise full pot!")
+        # elif action == 3:
+        #     print(f"{player} raise half pot!")
+        # elif action == 4:
+        #     print(f"{player} all in!")
 
     def _step(self, move: int) -> float:
 
@@ -261,7 +283,7 @@ class DeltaEnv(BaseWrapper):
             )
         if self.done:
             result = "won" if reward > 0 else "lost"
-            msg = f"You {result} {int(abs(reward*2))} chips"
+            msg = f"You {result} {int(abs(reward*2))} chips\n"
 
             self.player_total += int(reward * 2)
             self.opponent_total -= int(reward * 2)
@@ -272,3 +294,8 @@ class DeltaEnv(BaseWrapper):
                 self.render_game(render_opponent_cards=True, win_message=msg)
 
         return self.observation, reward, self.done, self.info
+
+    def render_multi_line(self, text: str, x: int, y: int, fsize: int):
+        lines = text.splitlines()
+        for i, l in enumerate(lines):
+            self._screen.blit(self._font.render(l, 0, BLACK_COLOR), (x, y + fsize * i))

@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 from env_wrapper import BUTTON_DIM, DeltaEnv, get_button_origins
-from pettingzoo.classic import texas_holdem_v4
+from pettingzoo.classic import texas_holdem_no_limit_v6
 
 HERE = Path(__file__).parent.resolve()
 
@@ -63,7 +63,7 @@ def PokerEnv(
     game_speed_multiplier: int = 0,
 ) -> DeltaEnv:
     return DeltaEnv(
-        texas_holdem_v4.env(),
+        texas_holdem_no_limit_v6.env(),
         opponent_choose_move,
         verbose,
         render,
