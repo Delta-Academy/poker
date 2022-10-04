@@ -56,7 +56,6 @@ class DeltaEnv(BaseWrapper):
         verbose: bool = False,
         render: bool = False,
         game_speed_multiplier: float = 0.0,
-        persist_chips_across_hands: bool = False,
     ):
 
         super().__init__(env)
@@ -79,7 +78,6 @@ class DeltaEnv(BaseWrapper):
         self.action_space = Discrete(5)
 
         self.observation_space = Box(low=0, high=200, shape=(55,))
-        self.persist_chips_across_hands = persist_chips_across_hands
 
         if render:
             pygame.init()
@@ -212,11 +210,7 @@ class DeltaEnv(BaseWrapper):
 
     @property
     def game_over(self) -> bool:
-        return (
-            self.player_total <= 0 or self.opponent_total <= 0
-            if self.persist_chips_across_hands
-            else False
-        )
+        return self.player_total <= 0 or self.opponent_total <= 0
 
     def reset(self):
         """Reset the whole round."""
@@ -244,9 +238,6 @@ class DeltaEnv(BaseWrapper):
         reward = 0.0
         if self.verbose:
             print("starting game")
-
-        if self.verbose:
-            print(f"resetting hand. You have {self.observation[-1]} chips\n")
 
         # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
@@ -305,27 +296,26 @@ class DeltaEnv(BaseWrapper):
         return self.observation, reward, self.done, self.info
 
     def complete_hand(self, reward: float) -> float:
-        if self.persist_chips_across_hands:
-            self.player_total += int(reward)
-            self.opponent_total -= int(reward)
+        self.player_total += int(reward)
+        self.opponent_total -= int(reward)
 
-            if reward == 0:
-                win_messsage = "Draw!"
-            else:
-                result = "won" if reward > 0 else "lost"
-                win_messsage = f"You {result} {int(abs(reward))} chips"
+        if reward == 0:
+            win_messsage = "Draw!"
+        else:
+            result = "won" if reward > 0 else "lost"
+            win_messsage = f"You {result} {int(abs(reward))} chips"
 
-            # If the game is over give a large magnitude reward
-            if self.player_total <= 0:
-                reward = -self.STARTING_MONEY
-            elif self.opponent_total <= 0:
-                reward = self.STARTING_MONEY
+        # If the game is over give a large magnitude reward
+        if self.player_total <= 0:
+            reward = -self.STARTING_MONEY
+        elif self.opponent_total <= 0:
+            reward = self.STARTING_MONEY
 
-            if self.verbose:
-                print(win_messsage)
+        if self.verbose:
+            print(win_messsage)
+
         if self.render:
             self.render_game(render_opponent_cards=True, win_message=win_messsage)
-            print(f"reward: {reward}")
             wait_for_click()
 
         if not self.game_over:

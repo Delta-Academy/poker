@@ -31,29 +31,18 @@ def play_poker(
         opponent_choose_move != human_player
     ), "Set your_choose_move to human_player not opponent_choose_move"
 
-    # Persist chips across hands if you are playing manually
-    # persist_chips_across_hands = your_choose_move == human_player
-    # Probs remove
-
-    persist_chips_across_hands = True
-
     env = PokerEnv(
         opponent_choose_move,
         verbose=verbose,
         render=render,
         game_speed_multiplier=game_speed_multiplier,
-        persist_chips_across_hands=persist_chips_across_hands,
     )
 
     for _ in range(100):
         observation, reward, done, info = env.reset()
         while not done:
-            print(observation)
-            print(reward)
             action = your_choose_move(observation, info["legal_moves"])
             observation, reward, done, info = env.step(action)
-        print("done")
-        print(reward)
 
 
 def PokerEnv(
@@ -61,7 +50,6 @@ def PokerEnv(
     verbose: bool = False,
     render: bool = False,
     game_speed_multiplier: float = 0.0,
-    persist_chips_across_hands: bool = False,
 ) -> DeltaEnv:
     return DeltaEnv(
         texas_holdem_no_limit_v6.env(),
@@ -69,7 +57,6 @@ def PokerEnv(
         verbose,
         render,
         game_speed_multiplier=game_speed_multiplier,
-        persist_chips_across_hands=persist_chips_across_hands,
     )
 
 
