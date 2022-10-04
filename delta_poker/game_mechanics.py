@@ -19,48 +19,43 @@ def choose_move_randomly(state: np.ndarray, legal_moves: np.ndarray):
     return random.choice(legal_moves)
 
 
-def wait_for_click() -> None:
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                return
-
-
 def play_poker(
     your_choose_move: Callable,
     opponent_choose_move: Callable,
-    game_speed_multiplier=1,
-    render=True,
-    verbose=False,
+    game_speed_multiplier: float = 1,
+    render: bool = True,
+    verbose: bool = False,
 ) -> None:
+
+    assert (
+        opponent_choose_move != human_player
+    ), "Set your_choose_move to human_player not opponent_choose_move"
+
+    # Persist chips across hands if you are playing manually
+    # persist_chips_across_hands = your_choose_move == human_player
+    # Probs remove
+    persist_chips_across_hands = True
 
     env = PokerEnv(
         opponent_choose_move,
         verbose=verbose,
         render=render,
         game_speed_multiplier=game_speed_multiplier,
+        persist_chips_across_hands=persist_chips_across_hands,
     )
 
-    n_hands = 5
-    player_chip_change = 0
-    for _ in range(n_hands):
-        observation, reward, done, info = env.reset()
-        while not done:
-            action = your_choose_move(observation, info["legal_moves"])
-            observation, reward, done, info = env.step(action)
-        player_chip_change += reward * 2
-        if verbose or render:
-            result = "won" if player_chip_change > 0 else "lost"
-            print(f"In total you've {result} {abs(player_chip_change)} chips")
-        if render:
-            wait_for_click()
+    observation, reward, done, info = env.reset()
+    while not done:
+        action = your_choose_move(observation, info["legal_moves"])
+        observation, reward, done, info = env.step(action)
 
 
 def PokerEnv(
     opponent_choose_move: Callable[[np.ndarray, np.ndarray], int],
     verbose: bool = False,
     render: bool = False,
-    game_speed_multiplier: int = 0,
+    game_speed_multiplier: float = 0.0,
+    persist_chips_across_hands: bool = False,
 ) -> DeltaEnv:
     return DeltaEnv(
         texas_holdem_no_limit_v6.env(),
@@ -68,10 +63,11 @@ def PokerEnv(
         verbose,
         render,
         game_speed_multiplier=game_speed_multiplier,
+        persist_chips_across_hands=persist_chips_across_hands,
     )
 
 
-def click_in_button(pos: Tuple[int, int], idx) -> bool:
+def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
 
     x_pos, y_pos = get_button_origins(idx)
 
@@ -107,11 +103,11 @@ class ChooseMoveCheckpoint:
         return self._choose_move(state, legal_moves, self.neural_network)
 
 
-def checkpoint_model(model: nn.Module, checkpoint_name: str):
+def checkpoint_model(model: nn.Module, checkpoint_name: str) -> None:
     torch.save(model, HERE / checkpoint_name)
 
 
-def load_checkpoint(checkpoint_name: str):
+def load_checkpoint(checkpoint_name: str) -> nn.Module:
     return torch.load(HERE / checkpoint_name)
 
 

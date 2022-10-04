@@ -1,8 +1,23 @@
 run = ["python3", "main.py"]
 language = "python3"
 entrypoint = "main.py"
-# hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
-hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc", "tests",".gitignore", ".pre-commit-config.yaml", "setup.cfg", "code/__init__.py", "__init__.py", "team_winner.py"]
+
+hidden = [
+    "venv",
+    ".config",
+    "**/__pycache__",
+    "**/.mypy_cache",
+    "**/*.pyc",
+    "tests",
+    ".gitignore",
+    ".pre-commit-config.yaml",
+    "setup.cfg",
+    "code/__init__.py",
+    "__init__.py",
+    "team_winner.py",
+    "hash_game_mechanics.py",
+    "init_replit.sh",
+]
 
 audio = true
 

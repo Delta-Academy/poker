@@ -47,7 +47,7 @@ def get_button_origins(idx: int) -> Tuple[int, int]:
 
 
 class DeltaEnv(BaseWrapper):
-    STARTING_MONEY = 3
+    STARTING_MONEY = 200
 
     def __init__(
         self,
@@ -55,7 +55,8 @@ class DeltaEnv(BaseWrapper):
         opponent_choose_move: Callable,
         verbose: bool = False,
         render: bool = False,
-        game_speed_multiplier: int = 0,
+        game_speed_multiplier: float = 0.0,
+        persist_chips_across_hands: bool = False,
     ):
 
         super().__init__(env)
@@ -77,7 +78,8 @@ class DeltaEnv(BaseWrapper):
 
         self.action_space = Discrete(5)
 
-        self.observation_space = Box(low=0, high=100, shape=(54,))
+        self.observation_space = Box(low=0, high=200, shape=(55,))
+        self.persist_chips_across_hands = persist_chips_across_hands
 
         if render:
             pygame.init()
@@ -115,10 +117,11 @@ class DeltaEnv(BaseWrapper):
             assert sum(cards == 1) == 2
             assert sum(cards == -1) in [3, 4, 5]
             assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
-            # How the chips are represented is changed compared to limit
-            # assert np.all(np.isin(obs[52:], [0, 1]))
 
         obs[:52] = cards
+
+        # Add how many chips remaining to the state
+        obs = np.append(obs, self.player_total)
         return obs
 
     @property
@@ -135,6 +138,10 @@ class DeltaEnv(BaseWrapper):
 
     @property
     def done(self) -> bool:
+        return self.game_over
+
+    @property
+    def hand_done(self) -> bool:
         return self.env.last()[2]
 
     def render_game(
@@ -157,7 +164,7 @@ class DeltaEnv(BaseWrapper):
         possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
 
         self.env.env.env.env.draw_chips(
-            int(possible_chips(self.opponent_total)), 0, int(FULL_HEIGHT * 0.15)
+            int(possible_chips(self.opponent_total)), 0, int(FULL_HEIGHT * 0.2)
         )
         self.env.env.env.env.draw_chips(
             int(possible_chips(self.player_total)), 0, int(FULL_HEIGHT * 0.66)
@@ -205,9 +212,24 @@ class DeltaEnv(BaseWrapper):
 
     @property
     def game_over(self) -> bool:
-        return self.player_total <= 0 or self.opponent_total <= 0
+        return (
+            self.player_total <= 0 or self.opponent_total <= 0
+            if self.persist_chips_across_hands
+            else False
+        )
 
-    def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
+    def reset(self):
+        """Reset the whole round."""
+        self.player_total = self.opponent_total = self.STARTING_MONEY
+        if self.verbose:
+            print("New round, resetting chips to starting value")
+        return self.reset_hand()
+
+    def reset_hand(self) -> Tuple[np.ndarray, float, bool, Dict]:
+        """Reset game to the next hand, persisting chips."""
+
+        if self.render and self.game_over:
+            return self.observation, 0, True, self.info
 
         super().reset(options={"player_chips": [self.player_total, self.opponent_total]})
 
@@ -223,23 +245,25 @@ class DeltaEnv(BaseWrapper):
         if self.verbose:
             print("starting game")
 
+        if self.verbose:
+            print(f"resetting hand. You have {self.observation[-1]} chips\n")
+
         # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
             opponent_move = self.opponent_choose_move(
                 state=self.observation, legal_moves=self.legal_moves
             )
-            reward -= self._step(opponent_move)
+            reward = self._step(opponent_move)
+            if self.hand_done:
+                self.complete_hand(reward)
 
         if self.render:
             # If the opponent folds on the first hand, win message
             win_message = f"You won {int(abs(reward))} chips" if self.done else None
-            if self.done:
-
-                self.player_total -= int(reward)
-                self.opponent_total += int(reward)
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info
+        # return self.observation
 
     def print_action(self, action: int) -> None:
 
@@ -247,7 +271,7 @@ class DeltaEnv(BaseWrapper):
         if action not in self.legal_moves:
             print(f"{player} made an illegal move: {action}")
         else:
-            print(f"{player} {MOVE_MAP[action]}")
+            print(f"{player} {MOVE_MAP[action].strip()}")
 
     def _step(self, move: int) -> float:
 
@@ -270,26 +294,39 @@ class DeltaEnv(BaseWrapper):
 
         reward = self._step(move)
 
-        if not self.done:
+        if self.hand_done:
+            reward = self.complete_hand(reward)
+        else:
             reward = self._step(
                 self.opponent_choose_move(state=self.observation, legal_moves=self.legal_moves),
             )
-        if self.done:
-            self.complete_hand(reward)
+
         return self.observation, reward, self.done, self.info
 
-    def complete_hand(self, reward: float) -> None:
-        result = "won" if reward > 0 else "lost"
-        win_messsage = f"You {result} {int(abs(reward*2))} chips\n"
-        win_messsage = f"You {result} {int(abs(reward))} chips\n"
+    def complete_hand(self, reward: float) -> float:
 
-        self.player_total += int(reward)
-        self.opponent_total -= int(reward)
+        if self.persist_chips_across_hands:
+            self.player_total += int(reward)
+            self.opponent_total -= int(reward)
+
+            # If the game is over give a large magnitude reward
+            if self.player_total <= 0:
+                reward = -self.STARTING_MONEY
+            elif self.opponent_total <= 0:
+                reward = self.STARTING_MONEY
+
+        result = "won" if reward > 0 else "lost"
+        win_messsage = f"You {result} {int(abs(reward))} chips"
 
         if self.verbose:
             print(win_messsage)
         if self.render:
             self.render_game(render_opponent_cards=True, win_message=win_messsage)
+            wait_for_click()
+
+        if not self.game_over:
+            self.reset_hand()
+        return reward
 
     def render_multi_line_centre(
         self, string: str, x: int, y: int, fsize: int, color: Tuple[int, int, int]
@@ -300,3 +337,10 @@ class DeltaEnv(BaseWrapper):
             text = self._font.render(l, False, color)
             text_rect = text.get_rect(center=(x, y + fsize * i))
             self._screen.blit(text, text_rect)
+
+
+def wait_for_click() -> None:
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                return
