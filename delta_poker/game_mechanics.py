@@ -34,6 +34,7 @@ def play_poker(
     # Persist chips across hands if you are playing manually
     # persist_chips_across_hands = your_choose_move == human_player
     # Probs remove
+
     persist_chips_across_hands = True
 
     env = PokerEnv(
@@ -44,10 +45,15 @@ def play_poker(
         persist_chips_across_hands=persist_chips_across_hands,
     )
 
-    observation, reward, done, info = env.reset()
-    while not done:
-        action = your_choose_move(observation, info["legal_moves"])
-        observation, reward, done, info = env.step(action)
+    for _ in range(100):
+        observation, reward, done, info = env.reset()
+        while not done:
+            print(observation)
+            print(reward)
+            action = your_choose_move(observation, info["legal_moves"])
+            observation, reward, done, info = env.step(action)
+        print("done")
+        print(reward)
 
 
 def PokerEnv(

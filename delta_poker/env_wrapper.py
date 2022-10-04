@@ -294,20 +294,26 @@ class DeltaEnv(BaseWrapper):
 
         reward = self._step(move)
 
-        if self.hand_done:
-            reward = self.complete_hand(reward)
-        else:
+        if not self.hand_done:
             reward = self._step(
                 self.opponent_choose_move(state=self.observation, legal_moves=self.legal_moves),
             )
 
+        if self.hand_done:
+            reward = self.complete_hand(reward)
+
         return self.observation, reward, self.done, self.info
 
     def complete_hand(self, reward: float) -> float:
-
         if self.persist_chips_across_hands:
             self.player_total += int(reward)
             self.opponent_total -= int(reward)
+
+            if reward == 0:
+                win_messsage = "Draw!"
+            else:
+                result = "won" if reward > 0 else "lost"
+                win_messsage = f"You {result} {int(abs(reward))} chips"
 
             # If the game is over give a large magnitude reward
             if self.player_total <= 0:
@@ -315,17 +321,16 @@ class DeltaEnv(BaseWrapper):
             elif self.opponent_total <= 0:
                 reward = self.STARTING_MONEY
 
-        result = "won" if reward > 0 else "lost"
-        win_messsage = f"You {result} {int(abs(reward))} chips"
-
-        if self.verbose:
-            print(win_messsage)
+            if self.verbose:
+                print(win_messsage)
         if self.render:
             self.render_game(render_opponent_cards=True, win_message=win_messsage)
+            print(f"reward: {reward}")
             wait_for_click()
 
         if not self.game_over:
             self.reset_hand()
+
         return reward
 
     def render_multi_line_centre(
