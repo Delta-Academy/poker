@@ -17,6 +17,12 @@ hidden = [
     "team_winner.py",
     "hash_game_mechanics.py",
     "init_replit.sh",
+    "images",
+    "requirements_dev.txt",
+    "setup.py",
+    "Makefile",
+    "poetry.lock",
+    "pyproject.toml"
 ]
 
 audio = true
