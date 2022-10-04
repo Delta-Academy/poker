@@ -55,7 +55,7 @@ class DeltaEnv(BaseWrapper):
         opponent_choose_move: Callable,
         verbose: bool = False,
         render: bool = False,
-        game_speed_multiplier: float = 0.0,
+        game_speed_multiplier: float = 1.0,
     ):
 
         super().__init__(env)

@@ -38,11 +38,10 @@ def play_poker(
         game_speed_multiplier=game_speed_multiplier,
     )
 
-    for _ in range(100):
-        observation, reward, done, info = env.reset()
-        while not done:
-            action = your_choose_move(observation, info["legal_moves"])
-            observation, reward, done, info = env.step(action)
+    observation, reward, done, info = env.reset()
+    while not done:
+        action = your_choose_move(observation, info["legal_moves"])
+        observation, reward, done, info = env.step(action)
 
 
 def PokerEnv(
