@@ -6,7 +6,7 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from torch import nn
 
-from game_mechanics import HERE, PokerEnv, human_player, wait_for_click
+from game_mechanics import HERE, PokerEnv, choose_move_randomly, human_player, wait_for_click
 
 NEURAL_NETWORK = MaskablePPO.load(
     "/Users/jamesrowland/Code/poker/delta_poker/nolimit_checkpoint1.zip"
@@ -53,12 +53,13 @@ def play_poker(
     env = ActionMasker(env, mask_fn)
 
     while True:
-        # observation, reward, done, info = env.reset()
-        observation = env.reset()
 
-        done = False
-        info = {}
-        info["legal_moves"] = [0, 1, 2, 3]
+        observation, reward, done, info = env.reset()
+
+        # observation = env.reset()
+        # done = False
+        # info = {"legal_moves":  [0, 1, 2, 3, 4]}
+
         while not done:
             action = choose_move(observation, info["legal_moves"])
             observation, reward, done, info = env.step(action)

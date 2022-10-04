@@ -9,7 +9,7 @@ import pygame
 import torch
 from torch import nn
 
-from env_wrapper import BUTTON_DIM, DeltaEnv, get_button_origins
+from env_wrapper import BUTTON_DIM, N_BUTTONS, DeltaEnv, get_button_origins
 from pettingzoo.classic import texas_holdem_no_limit_v6
 
 HERE = Path(__file__).parent.resolve()
@@ -93,7 +93,7 @@ def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
         for event in ev:
             if event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
                 pos = pygame.mouse.get_pos()
-                for idx in range(4):
+                for idx in range(N_BUTTONS):
                     if click_in_button(pos, idx) and idx in legal_moves:
                         return idx
 
