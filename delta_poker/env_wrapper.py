@@ -212,7 +212,7 @@ class DeltaEnv(BaseWrapper):
     def game_over(self) -> bool:
         return self.player_total <= 0 or self.opponent_total <= 0
 
-    def reset(self):
+    def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
         """Reset the whole round."""
         self.player_total = self.opponent_total = self.STARTING_MONEY
         if self.verbose:
@@ -222,6 +222,7 @@ class DeltaEnv(BaseWrapper):
     def reset_hand(self) -> Tuple[np.ndarray, float, bool, Dict]:
         """Reset game to the next hand, persisting chips."""
 
+        # Persist the game over screeen if rendering until reset
         if self.render and self.game_over:
             return self.observation, 0, True, self.info
 
@@ -254,7 +255,6 @@ class DeltaEnv(BaseWrapper):
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
         return self.observation, reward, self.done, self.info
-        # return self.observation
 
     def print_action(self, action: int) -> None:
 

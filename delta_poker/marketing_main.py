@@ -1,3 +1,6 @@
+"""main file for "play against my AI" marketing material."""
+
+
 import random
 from typing import Callable
 
@@ -55,10 +58,6 @@ def play_poker(
     while True:
 
         observation, reward, done, info = env.reset()
-
-        # observation = env.reset()
-        # done = False
-        # info = {"legal_moves":  [0, 1, 2, 3, 4]}
 
         while not done:
             action = choose_move(observation, info["legal_moves"])

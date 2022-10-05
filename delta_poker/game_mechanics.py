@@ -48,7 +48,7 @@ def PokerEnv(
     opponent_choose_move: Callable[[np.ndarray, np.ndarray], int],
     verbose: bool = False,
     render: bool = False,
-    game_speed_multiplier: float = 0.0,
+    game_speed_multiplier: float = 1.0,
 ) -> DeltaEnv:
     return DeltaEnv(
         texas_holdem_no_limit_v6.env(),
