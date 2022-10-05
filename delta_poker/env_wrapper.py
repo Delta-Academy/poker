@@ -21,14 +21,6 @@ TABLE_WIDTH = 375
 TABLE_HEIGHT = 500
 TABLE_ORIGIN = ((FULL_WIDTH - TABLE_WIDTH) // 2, 0)
 
-# Clickable buttons
-N_BUTTONS = 5
-GAP_BETWEEN_BUTTONS = 10
-BUTTON_MARGIN_HORIZONTAL = (FULL_WIDTH - TABLE_WIDTH) // 2
-BUTTON_MARGIN_VERTICAL = 10
-BUTTON_DIM = (
-    FULL_WIDTH - BUTTON_MARGIN_HORIZONTAL * 2 - N_BUTTONS * GAP_BETWEEN_BUTTONS
-) // N_BUTTONS
 
 MOVE_MAP: Dict[int, str] = {
     0: "fold",
@@ -37,6 +29,15 @@ MOVE_MAP: Dict[int, str] = {
     3: "raise\n",  # Full pot, to be appended with the amount
     4: "all\nin",
 }
+
+# Clickable buttons
+N_BUTTONS = len(MOVE_MAP)
+GAP_BETWEEN_BUTTONS = 10
+BUTTON_MARGIN_HORIZONTAL = (FULL_WIDTH - TABLE_WIDTH) // 2
+BUTTON_MARGIN_VERTICAL = 10
+BUTTON_DIM = (
+    FULL_WIDTH - BUTTON_MARGIN_HORIZONTAL * 2 - N_BUTTONS * GAP_BETWEEN_BUTTONS
+) // N_BUTTONS
 
 
 def get_button_origins(idx: int) -> Tuple[int, int]:

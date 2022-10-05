@@ -60,15 +60,8 @@ def PokerEnv(
 
 
 def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
-
     x_pos, y_pos = get_button_origins(idx)
-
-    return (
-        pos[0] > x_pos
-        and pos[0] < x_pos + BUTTON_DIM
-        and pos[1] > y_pos
-        and pos[1] < y_pos + BUTTON_DIM
-    )
+    return x_pos < pos[0] < x_pos + BUTTON_DIM and y_pos < pos[1] < y_pos + BUTTON_DIM
 
 
 LEFT = 1
