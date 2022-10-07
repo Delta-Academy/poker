@@ -48,7 +48,7 @@ def get_button_origins(idx: int) -> Tuple[int, int]:
 
 
 class DeltaEnv(BaseWrapper):
-    STARTING_MONEY = 200
+    STARTING_MONEY = 100
 
     def __init__(
         self,
@@ -83,9 +83,7 @@ class DeltaEnv(BaseWrapper):
         if render:
             pygame.init()
             self._font = pygame.font.SysFont("arial", 18)
-
             self._screen = pygame.display.set_mode((FULL_WIDTH, FULL_HEIGHT))
-
             self.subsurf = self._screen.subsurface(
                 (
                     TABLE_ORIGIN[0],
@@ -142,6 +140,20 @@ class DeltaEnv(BaseWrapper):
     @property
     def hand_done(self) -> bool:
         return self.env.last()[2]
+
+    def render_game_tournament(
+        self, screen: pygame.surface.Surface, player_names: List[str], win_message: Optional[str]
+    ) -> None:
+        """Inject a screen and render the table without buttons for the tournament."""
+
+        self.env.render(
+            most_recent_move=self.most_recent_move,
+            render_opponent_cards=True,
+            win_message=win_message,
+            screen=screen,
+            player_names=player_names,
+            continue_hands=False,
+        )
 
     def render_game(
         self,
