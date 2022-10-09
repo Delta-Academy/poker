@@ -5,3 +5,6 @@ delta-utils
 gym
 git+https://github.com/Delta-Academy/PettingZoo.git
 git+https://github.com/Delta-Academy/rlcard.git
+# Torch
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==1.8.0+cpu
