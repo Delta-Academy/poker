@@ -54,7 +54,7 @@ def choose_move(state: np.ndarray, legal_moves: np.ndarray, neural_network: nn.M
 
 if __name__ == "__main__":
 
-    ## Example workflow, feel free to edit this! ###
+    # Example workflow, feel free to edit this! ###
     neural_network = train()
     save_network(neural_network, TEAM_NAME)
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     play_poker(
         your_choose_move=human_player,
         opponent_choose_move=choose_move_no_network,
-        game_speed_multiplier=1,
+        game_speed_multiplier=1000,
         render=True,
-        verbose=False,
+        verbose=True,
     )
