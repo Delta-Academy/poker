@@ -142,7 +142,7 @@ class DeltaEnv(BaseWrapper):
         return self.env.last()[2]
 
     def render_game_tournament(
-        self, screen: pygame.surface.Surface, player_names: List[str], win_message: Optional[str]
+        self, screen: pygame.surface.Surface, win_message: Optional[str]
     ) -> None:
         """Inject a screen and render the table without buttons for the tournament."""
 
@@ -151,7 +151,7 @@ class DeltaEnv(BaseWrapper):
             render_opponent_cards=True,
             win_message=win_message,
             screen=screen,
-            player_names=player_names,
+            show_player_names=False,
             continue_hands=False,
         )
 
@@ -168,7 +168,7 @@ class DeltaEnv(BaseWrapper):
             render_opponent_cards=render_opponent_cards,
             win_message=win_message,
             screen=self.subsurf,
-            player_names=player_names,
+            show_player_names=True,
             continue_hands=not self.game_over,
         )
 
