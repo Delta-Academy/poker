@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import Callable, Tuple
 
 import numpy as np
+
 import pygame
 import torch
-from torch import nn
-
 from env_wrapper import BUTTON_DIM, N_BUTTONS, DeltaEnv, get_button_origins
 from pettingzoo.classic import texas_holdem_no_limit_v6
+from torch import nn
 
 HERE = Path(__file__).parent.resolve()
 

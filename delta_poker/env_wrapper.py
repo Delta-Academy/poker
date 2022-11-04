@@ -2,10 +2,10 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
+
 import pygame
 import pygame.gfxdraw
 from gym.spaces import Box, Discrete
-
 from pettingzoo.utils import AECEnv, BaseWrapper
 
 BLACK_COLOR = (21, 26, 26)

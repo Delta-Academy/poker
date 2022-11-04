@@ -1,5 +1,4 @@
 import pytest
-
 from delta_poker.env_wrapper import DeltaEnv
 from pettingzoo.classic import texas_holdem_no_limit_v6
 
