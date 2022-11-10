@@ -2,7 +2,6 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-
 import pygame
 import pygame.gfxdraw
 from gym.spaces import Box, Discrete
@@ -79,6 +78,7 @@ class DeltaEnv(BaseWrapper):
         self.action_space = Discrete(5)
 
         self.observation_space = Box(low=0, high=200, shape=(55,))
+        self.env_reset = False
 
         if render:
             pygame.init()
@@ -227,6 +227,7 @@ class DeltaEnv(BaseWrapper):
 
     def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
         """Reset the whole round."""
+        self.env_reset = True
         self.player_total = self.opponent_total = self.STARTING_MONEY
         if self.verbose:
             print("New round, resetting chips to starting value")
@@ -279,6 +280,7 @@ class DeltaEnv(BaseWrapper):
 
     def _step(self, move: int) -> float:
 
+        assert self.env_reset, "You need reset the environment before taking your first step!"
         assert not self.done, "Game is done! Please reset() the env before calling step() again"
         assert move in self.legal_moves, f"{move} is an illegal move"
 

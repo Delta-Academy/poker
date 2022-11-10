@@ -27,6 +27,7 @@ We will be playing with a fixed small and big blind size.
 **The goal is to have have more chips that your opponent after all hands have been played / win all chips off your opponent**
 
 ## Playing against your AI
+
 You can put your AI through its paces by playing against it yourself! Just pass `human_player` as the `your_choose_move` argument to `play_poker()`.
 
 It runs in replit though you may need to play with the window size. It is better to run it locally as `pygame` opens in a new window :window:.
@@ -53,22 +54,18 @@ The competition & discussion will be in [Gather Town](https://app.gather.town/ap
 
 ### States / Observations :spades: :hearts: :clubs: :diamonds:
 
-
-
 The state of the game is described in a 1-dimensional numpy array of shape **(55,)**. Each element is an integer.
 
-| Index | Meaning |
-| ------ | --- |
-| 0-51  | Cards: `1` in hand `-1` on table    |
-| 52    | Number of chips bet by you   |
-| 54  | Number of chips bet by your opponent   |
-| 55   | Your stack of chips at the start of the hand
-
+| Index | Meaning                                      |
+| ----- | -------------------------------------------- |
+| 0-51  | Cards: `1` in hand `-1` on table             |
+| 52    | Number of chips bet by you                   |
+| 54    | Number of chips bet by your opponent         |
+| 55    | Your stack of chips at the start of the hand |
 
 The first 52 elements of the state array are mapped to each card in a standard playing card deck. The element is **1** if your player can see the card in their **hand** :hand: and **-1** if it's in the **flop** / **turn** / **river**
 
 The remaining elements refer to the number of chips :fries::
-
 
 ### Legal moves
 
@@ -80,13 +77,13 @@ The legal moves :oncoming_police_car: available to a player is provided on each 
 
 Your move is defined as an integer
 
-| Action | int |
-| ------ | --- |
-| Fold   | 0   |
-| Check/Call  | 1   |
-| Raise Half Pot| 2   |
-| Raise Full Pot| 3   |
-| All-in | 4   |
+| Action         | int |
+| -------------- | --- |
+| Fold           | 0   |
+| Check/Call     | 1   |
+| Raise Half Pot | 2   |
+| Raise Full Pot | 3   |
+| All-in         | 4   |
 
 ### Rewards :moneybag:
 
