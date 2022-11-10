@@ -1,11 +1,12 @@
+import random
 import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pygame
 import pygame.gfxdraw
-from gym.spaces import Box, Discrete
-from pettingzoo.utils import AECEnv, BaseWrapper
+
+from rlcard.games.nolimitholdem.game import NolimitholdemGame
 
 BLACK_COLOR = (21, 26, 26)
 WHITE_COLOR = (255, 255, 255)
@@ -46,40 +47,38 @@ def get_button_origins(idx: int) -> Tuple[int, int]:
     )
 
 
-class DeltaEnv(BaseWrapper):
+class PokerEnv:
     STARTING_MONEY = 100
 
     def __init__(
         self,
-        env: AECEnv,
         opponent_choose_move: Callable,
         verbose: bool = False,
         render: bool = False,
         game_speed_multiplier: float = 1.0,
     ):
 
-        super().__init__(env)
-        self.player_total = self.opponent_total = self.STARTING_MONEY
-
         self.opponent_choose_move = opponent_choose_move
         self.render = render
         self.verbose = verbose
         self.game_speed_multiplier = game_speed_multiplier
 
-        # The player to move first is randomised by the env
-        self.player_agent = "player_0"
-        self.opponent_agent = "player_1"
+        self.game = NolimitholdemGame()
+        self.player_total = self.opponent_total = self.STARTING_MONEY
 
-        self.most_recent_move: Dict[str, Optional[int]] = {
-            self.player_agent: None,
-            self.opponent_agent: None,
-        }
+        # Will be flipped on every hand reset
+        self.dealer = random.choice([0, 1])
 
-        self.action_space = Discrete(5)
+        # Want to get rid of this
+        self.player_agent = 0
+        self.opponent_agent = 1
 
-        self.observation_space = Box(low=0, high=200, shape=(55,))
+        # self.most_recent_move: Dict[str, Optional[int]] = {
+        #     self.player_agent: None,
+        #     self.opponent_agent: None,
+        # }
+
         self.env_reset = False
-
         if render:
             pygame.init()
             self._font = pygame.font.SysFont("arial", 18)
@@ -95,43 +94,43 @@ class DeltaEnv(BaseWrapper):
 
     @property
     def turn(self) -> str:
-        return self.env.agent_selection
+        # I THINK
+        return self.game.game_pointer
 
     @property
-    def observation(self) -> np.ndarray:
-        # This doesn't generalise across envs
-        obs = self.env.last()[0]["observation"]
-        cards = obs[:52]
-
-        if len(self.hand_idx[self.turn]) == 0:
-            assert np.sum(cards) == 2
-            self.hand_idx[self.turn] = list(np.where(cards)[0])
-        else:
-            cards = -cards
-            cards[self.hand_idx[self.turn]] *= -1
-
-        if np.sum(cards != 0) > 2:
-            assert sum(cards == 1) == 2
-            assert sum(cards == -1) in [3, 4, 5]
-            assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
-
-        obs[:52] = cards
-
-        # Add how many chips remaining to the state
-        obs = np.append(obs, self.player_total)
-        return obs
+    def player_state(self) -> Dict:
+        # The state is actually quite a nice rich dictioanary here,
+        # we could leave it up to users how to represent it?
+        return self.game.get_state(self.player_agent)
 
     @property
-    def legal_moves(self) -> np.ndarray:
-        mask = self.env.last()[0]["action_mask"]
-        full_space = self.action_space
-        if not isinstance(full_space, Discrete):
-            raise NotImplementedError("Currently can only parse legal moves for discrete spaces")
-        return np.arange(full_space.n)[mask.astype(bool)]
+    def opponent_state(self) -> Dict:
+        return self.game.get_state(self.opponent_agent)
 
-    @property
-    def info(self) -> Dict:
-        return {"legal_moves": self.legal_moves}
+    # @property
+    # def state(self) -> np.ndarray:
+    # TODO
+
+    # obs = self.env.last()[0]["observation"]
+    # cards = obs[:52]
+
+    # if len(self.hand_idx[self.turn]) == 0:
+    #     assert np.sum(cards) == 2
+    #     self.hand_idx[self.turn] = list(np.where(cards)[0])
+    # else:
+    #     cards = -cards
+    #     cards[self.hand_idx[self.turn]] *= -1
+
+    # if np.sum(cards != 0) > 2:
+    #     assert sum(cards == 1) == 2
+    #     assert sum(cards == -1) in [3, 4, 5]
+    #     assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
+
+    # obs[:52] = cards
+
+    # # Add how many chips remaining to the state
+    # obs = np.append(obs, self.player_total)
+    # return obs
 
     @property
     def done(self) -> bool:
@@ -139,7 +138,8 @@ class DeltaEnv(BaseWrapper):
 
     @property
     def hand_done(self) -> bool:
-        return self.env.last()[2]
+        # I THINK
+        return self.game.is_over()
 
     def render_game_tournament(
         self, screen: pygame.surface.Surface, win_message: Optional[str]
@@ -187,7 +187,7 @@ class DeltaEnv(BaseWrapper):
 
     def draw_possible_actions(self) -> None:
 
-        pot_size = int(self.observation[52] + self.observation[53])
+        pot_size = int(self.state[52] + self.state[53])
         for idx, action in MOVE_MAP.items():
             if idx == 2:
                 action += str(pot_size // 2)
@@ -238,18 +238,28 @@ class DeltaEnv(BaseWrapper):
 
         # Persist the game over screeen if rendering until reset
         if self.render and self.game_over:
-            return self.observation, 0, True, self.info
+            return self.state, 0, True, self.info
 
-        super().reset(options={"player_chips": [self.player_total, self.opponent_total]})
+        self.dealer = int(not self.dealer)
 
-        assert len(self.env.agents) == 2, "Two agent game required"
+        game_config = {
+            "game_num_players": 2,
+            "player_chips": [self.player_total, self.opponent_total],
+            "dealer_id": self.dealer,
+        }
+
+        self.game.configure(game_config)
+        self.game.init_game()
 
         self.most_recent_move = {self.player_agent: None, self.opponent_agent: None}
+
         # Which elements of the obs vector are in the hand?
-        self.hand_idx: Dict[str, List] = {
+        # Probably dont need these variables
+        self.hand_idx: Dict[int, List] = {
             self.player_agent: [],
             self.opponent_agent: [],
         }
+
         reward = 0.0
         if self.verbose:
             print("starting game")
@@ -257,7 +267,7 @@ class DeltaEnv(BaseWrapper):
         # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
             opponent_move = self.opponent_choose_move(
-                state=self.observation, legal_moves=self.legal_moves
+                state=self.state, legal_moves=self.legal_moves
             )
             reward = self._step(opponent_move)
             if self.hand_done:
@@ -268,7 +278,7 @@ class DeltaEnv(BaseWrapper):
             win_message = f"You won {int(abs(reward))} chips" if self.done else None
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
-        return self.observation, reward, self.done, self.info
+        return self.state, reward, self.done, self.info
 
     def print_action(self, action: int) -> None:
 
@@ -302,13 +312,13 @@ class DeltaEnv(BaseWrapper):
 
         if not self.hand_done:
             reward = self._step(
-                self.opponent_choose_move(state=self.observation, legal_moves=self.legal_moves),
+                self.opponent_choose_move(state=self.state, legal_moves=self.legal_moves),
             )
 
         if self.hand_done:
             reward = self.complete_hand(reward)
 
-        return self.observation, reward, self.done, self.info
+        return self.state, reward, self.done, self.info
 
     def complete_hand(self, reward: float) -> float:
         self.player_total += int(reward)

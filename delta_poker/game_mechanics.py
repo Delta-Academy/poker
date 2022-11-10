@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Callable, Tuple
 
 import numpy as np
-
 import pygame
 import torch
-from env_wrapper import BUTTON_DIM, N_BUTTONS, DeltaEnv, get_button_origins
 from pettingzoo.classic import texas_holdem_no_limit_v6
 from torch import nn
+
+from env_wrapper import BUTTON_DIM, N_BUTTONS, PokerEnv, get_button_origins
+from rlcard.games.nolimitholdem.game import NolimitholdemGame
 
 HERE = Path(__file__).parent.resolve()
 
@@ -44,19 +45,19 @@ def play_poker(
         observation, reward, done, info = env.step(action)
 
 
-def PokerEnv(
-    opponent_choose_move: Callable[[np.ndarray, np.ndarray], int],
-    verbose: bool = False,
-    render: bool = False,
-    game_speed_multiplier: float = 1.0,
-) -> DeltaEnv:
-    return DeltaEnv(
-        texas_holdem_no_limit_v6.env(),
-        opponent_choose_move,
-        verbose,
-        render,
-        game_speed_multiplier=game_speed_multiplier,
-    )
+# def PokerEnv(
+#     opponent_choose_move: Callable[[np.ndarray, np.ndarray], int],
+#     verbose: bool = False,
+#     render: bool = False,
+#     game_speed_multiplier: float = 1.0,
+# ) -> DeltaEnv:
+#     return DeltaEnv(
+#         texas_holdem_no_limit_v6.env(),
+#         opponent_choose_move,
+#         verbose,
+#         render,
+#         game_speed_multiplier=game_speed_multiplier,
+#     )
 
 
 def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
