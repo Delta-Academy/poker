@@ -2,7 +2,7 @@
 import copy
 import random
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple
 
 import numpy as np
 import pygame
@@ -12,12 +12,14 @@ from torch import nn
 
 from env_wrapper import BUTTON_DIM, N_BUTTONS, PokerEnv, get_button_origins
 from rlcard.games.nolimitholdem.game import NolimitholdemGame
+from rlcard.games.nolimitholdem.round import Action
 
 HERE = Path(__file__).parent.resolve()
 
 
-def choose_move_randomly(state: np.ndarray, legal_moves: np.ndarray):
-    return random.choice(legal_moves)
+
+def choose_move_randomly(state: Dict) -> int:
+    return random.choice(state["legal_actions"]).value
 
 
 def play_poker(
@@ -41,23 +43,10 @@ def play_poker(
 
     observation, reward, done, info = env.reset()
     while not done:
-        action = your_choose_move(observation, info["legal_moves"])
+        action = your_choose_move(observation)
         observation, reward, done, info = env.step(action)
-
-
-# def PokerEnv(
-#     opponent_choose_move: Callable[[np.ndarray, np.ndarray], int],
-#     verbose: bool = False,
-#     render: bool = False,
-#     game_speed_multiplier: float = 1.0,
-# ) -> DeltaEnv:
-#     return DeltaEnv(
-#         texas_holdem_no_limit_v6.env(),
-#         opponent_choose_move,
-#         verbose,
-#         render,
-#         game_speed_multiplier=game_speed_multiplier,
-#     )
+        print("reward", reward)
+        print("\n")
 
 
 def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
@@ -68,7 +57,7 @@ def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
 LEFT = 1
 
 
-def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
+def human_player(state: np.ndarray) -> int:
     print("Your move, click to choose!")
     while True:
         ev = pygame.event.get()
@@ -76,7 +65,9 @@ def human_player(state: np.ndarray, legal_moves: np.ndarray) -> int:
             if event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
                 pos = pygame.mouse.get_pos()
                 for idx in range(N_BUTTONS):
-                    if click_in_button(pos, idx) and idx in legal_moves:
+                    if click_in_button(pos, idx) and idx in [
+                        action.value for action in state["legal_actions"]
+                    ]:
                         return idx
 
 

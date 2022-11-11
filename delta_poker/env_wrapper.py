@@ -6,6 +6,7 @@ import numpy as np
 import pygame
 import pygame.gfxdraw
 
+from render import draw_chips, render
 from rlcard.games.nolimitholdem.game import NolimitholdemGame
 
 BLACK_COLOR = (21, 26, 26)
@@ -93,7 +94,7 @@ class PokerEnv:
             )
 
     @property
-    def turn(self) -> str:
+    def turn(self) -> int:
         # I THINK
         return self.game.game_pointer
 
@@ -107,31 +108,6 @@ class PokerEnv:
     def opponent_state(self) -> Dict:
         return self.game.get_state(self.opponent_agent)
 
-    # @property
-    # def state(self) -> np.ndarray:
-    # TODO
-
-    # obs = self.env.last()[0]["observation"]
-    # cards = obs[:52]
-
-    # if len(self.hand_idx[self.turn]) == 0:
-    #     assert np.sum(cards) == 2
-    #     self.hand_idx[self.turn] = list(np.where(cards)[0])
-    # else:
-    #     cards = -cards
-    #     cards[self.hand_idx[self.turn]] *= -1
-
-    # if np.sum(cards != 0) > 2:
-    #     assert sum(cards == 1) == 2
-    #     assert sum(cards == -1) in [3, 4, 5]
-    #     assert list(np.where(cards == 1)[0]) == self.hand_idx[self.turn]
-
-    # obs[:52] = cards
-
-    # # Add how many chips remaining to the state
-    # obs = np.append(obs, self.player_total)
-    # return obs
-
     @property
     def done(self) -> bool:
         return self.game_over
@@ -141,29 +117,29 @@ class PokerEnv:
         # I THINK
         return self.game.is_over()
 
-    def render_game_tournament(
-        self, screen: pygame.surface.Surface, win_message: Optional[str]
-    ) -> None:
-        """Inject a screen and render the table without buttons for the tournament."""
+    # def render_game_tournament(
+    #     self, screen: pygame.surface.Surface, win_message: Optional[str]
+    # ) -> None:
+    #     """Inject a screen and render the table without buttons for the tournament."""
 
-        self.env.render(
-            most_recent_move=self.most_recent_move,
-            render_opponent_cards=True,
-            win_message=win_message,
-            screen=screen,
-            show_player_names=False,
-            continue_hands=False,
-        )
+    # self.env.render(
+    #     most_recent_move=self.most_recent_move,
+    #     render_opponent_cards=True,
+    #     win_message=win_message,
+    #     screen=screen,
+    #     show_player_names=False,
+    #     continue_hands=False,
+    # )
 
     def render_game(
         self,
         render_opponent_cards: bool = False,
         win_message: Optional[str] = None,
-        player_names: Optional[List[str]] = None,
     ) -> None:
 
         self._screen.fill((7, 99, 36))  # green background
-        self.env.render(
+        render(
+            player_states={"player": self.player_state, "opponent": self.opponent_state},
             most_recent_move=self.most_recent_move,
             render_opponent_cards=render_opponent_cards,
             win_message=win_message,
@@ -172,22 +148,38 @@ class PokerEnv:
             continue_hands=not self.game_over,
         )
 
+        # TODO:
         possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
+        player_chips = int(possible_chips(self.player_total))
+        opponent_chips = int(possible_chips(self.opponent_total))
 
-        self.env.env.env.env.draw_chips(
-            int(possible_chips(self.opponent_total)), 0, int(FULL_HEIGHT * 0.2)
+        draw_chips(
+            screen=self._screen,
+            n_chips=opponent_chips,
+            x_pos=0,
+            y_pos=int(FULL_HEIGHT * 0.2),
         )
-        self.env.env.env.env.draw_chips(
-            int(possible_chips(self.player_total)), 0, int(FULL_HEIGHT * 0.66)
+        draw_chips(
+            screen=self._screen,
+            n_chips=player_chips,
+            x_pos=0,
+            y_pos=int(FULL_HEIGHT * 0.66),
         )
+
         self.draw_possible_actions()
 
         pygame.display.update()
         time.sleep(1 / self.game_speed_multiplier)
 
+    @property
+    def legal_moves(self) -> List:
+        """Make this is correct for the currently player."""
+        return [action.value for action in self.game.get_legal_actions()]
+
     def draw_possible_actions(self) -> None:
 
-        pot_size = int(self.state[52] + self.state[53])
+        pot_size = self.player_state["pot"]
+
         for idx, action in MOVE_MAP.items():
             if idx == 2:
                 action += str(pot_size // 2)
@@ -225,7 +217,7 @@ class PokerEnv:
     def game_over(self) -> bool:
         return self.player_total <= 0 or self.opponent_total <= 0
 
-    def reset(self) -> Tuple[np.ndarray, float, bool, Dict]:
+    def reset(self) -> Tuple[Dict, float, bool, Dict]:
         """Reset the whole round."""
         self.env_reset = True
         self.player_total = self.opponent_total = self.STARTING_MONEY
@@ -233,12 +225,27 @@ class PokerEnv:
             print("New round, resetting chips to starting value")
         return self.reset_hand()
 
-    def reset_hand(self) -> Tuple[np.ndarray, float, bool, Dict]:
+    @property
+    def reward(self) -> float:
+        # TODO: Henry flagged issue about the STARTING MONEY thing
+        if self.player_total <= 0:
+            return -self.STARTING_MONEY
+
+        if self.opponent_total <= 0:
+            return self.STARTING_MONEY
+
+        try:
+            reward = self.game.get_payoffs()[self.player_agent]
+        except Exception:
+            reward = 0
+        return reward
+
+    def reset_hand(self) -> Tuple[Dict, float, bool, Dict]:
         """Reset game to the next hand, persisting chips."""
 
         # Persist the game over screeen if rendering until reset
         if self.render and self.game_over:
-            return self.state, 0, True, self.info
+            return self.player_state, 0, True, {}
 
         self.dealer = int(not self.dealer)
 
@@ -251,7 +258,10 @@ class PokerEnv:
         self.game.configure(game_config)
         self.game.init_game()
 
-        self.most_recent_move = {self.player_agent: None, self.opponent_agent: None}
+        self.most_recent_move: Dict[int, Optional[str]] = {
+            self.player_agent: None,
+            self.opponent_agent: None,
+        }
 
         # Which elements of the obs vector are in the hand?
         # Probably dont need these variables
@@ -260,25 +270,22 @@ class PokerEnv:
             self.opponent_agent: [],
         }
 
-        reward = 0.0
         if self.verbose:
             print("starting game")
 
         # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
-            opponent_move = self.opponent_choose_move(
-                state=self.state, legal_moves=self.legal_moves
-            )
-            reward = self._step(opponent_move)
+            opponent_move = self.opponent_choose_move(state=self.opponent_state)
+            self._step(opponent_move)
             if self.hand_done:
-                self.complete_hand(reward)
+                self.complete_hand(self.reward)
 
         if self.render:
             # If the opponent folds on the first hand, win message
-            win_message = f"You won {int(abs(reward))} chips" if self.done else None
+            win_message = f"You won {int(abs(self.reward))} chips" if self.done else None
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
 
-        return self.state, reward, self.done, self.info
+        return self.player_state, self.reward, self.done, {}
 
     def print_action(self, action: int) -> None:
 
@@ -286,7 +293,7 @@ class PokerEnv:
         if action not in self.legal_moves:
             print(f"{player} made an illegal move: {action}")
         else:
-            print(f"{player} {MOVE_MAP[action].strip()}")
+            print(f"{player} {action}")
 
     def _step(self, move: int) -> float:
 
@@ -294,33 +301,41 @@ class PokerEnv:
         assert not self.done, "Game is done! Please reset() the env before calling step() again"
         assert move in self.legal_moves, f"{move} is an illegal move"
 
-        self.most_recent_move[self.env.agent_selection] = move
+        self.most_recent_move[self.turn] = move
 
         if self.verbose:
             self.print_action(move)
 
-        self.env.step(move)
+        self.game.step(move)
 
         if self.render:
             self.render_game(render_opponent_cards=False, win_message=None)
 
-        return self.env.last()[1]
+    def step(self, move: int) -> Tuple[Dict, float, bool, Dict]:
 
-    def step(self, move: int) -> Tuple[np.ndarray, float, bool, Dict]:
-
-        reward = self._step(move)
+        self._step(move)
 
         if not self.hand_done:
-            reward = self._step(
-                self.opponent_choose_move(state=self.state, legal_moves=self.legal_moves),
+            self._step(
+                self.opponent_choose_move(state=self.opponent_state),
             )
 
         if self.hand_done:
-            reward = self.complete_hand(reward)
+            reward = self.complete_hand()
+            return self.player_state, reward, self.done, {}
 
-        return self.state, reward, self.done, self.info
+        return self.player_state, self.reward, self.done, {}
 
-    def complete_hand(self, reward: float) -> float:
+    def complete_hand(self) -> float:
+        """Finishes a hand and resets, does not reset the whole env as the episod is only over when
+        one player runs out of chips.
+
+        Need to store the reward before resetting as this changes self.reward
+        """
+
+        # Store as will be changed by self.reset_hand()
+        reward = self.reward
+
         self.player_total += int(reward)
         self.opponent_total -= int(reward)
 
@@ -329,12 +344,6 @@ class PokerEnv:
         else:
             result = "won" if reward > 0 else "lost"
             win_messsage = f"You {result} {int(abs(reward))} chips"
-
-        # If the game is over give a large magnitude reward
-        if self.player_total <= 0:
-            reward = -self.STARTING_MONEY
-        elif self.opponent_total <= 0:
-            reward = self.STARTING_MONEY
 
         if self.verbose:
             print(win_messsage)
