@@ -19,8 +19,8 @@ class ChooseMoveCheckpoint:
         self.neural_network = copy.deepcopy(load_checkpoint(checkpoint_name))
         self._choose_move = choose_move
 
-    def choose_move(self, state, legal_moves):
-        return self._choose_move(state, legal_moves, self.neural_network)
+    def __call__(self, state: State):
+        return self._choose_move(state, self.neural_network)
 
 
 def checkpoint_model(model: nn.Module, checkpoint_name: str) -> None:

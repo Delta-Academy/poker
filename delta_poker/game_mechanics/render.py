@@ -427,7 +427,7 @@ def wait_for_click() -> None:
                 return
 
 
-def human_player(state: np.ndarray) -> int:
+def human_player(state: State) -> int:
     print("Your move, click to choose!")
     LEFT = 1
     while True:
@@ -436,7 +436,5 @@ def human_player(state: np.ndarray) -> int:
             if event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
                 pos = pygame.mouse.get_pos()
                 for idx in range(N_BUTTONS):
-                    if click_in_button(pos, idx) and idx in [
-                        action.value for action in state["legal_actions"]
-                    ]:
+                    if click_in_button(pos, idx) and idx in state.legal_actions:
                         return idx
