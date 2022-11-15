@@ -88,8 +88,10 @@ def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
     return x_pos < pos[0] < x_pos + BUTTON_DIM and y_pos < pos[1] < y_pos + BUTTON_DIM
 
 
-def get_image(image_name: str) -> pygame.surface.Surface:
-    return pygame.image.load(SPRITE_PATH / f"{image_name}.png")
+def get_image(image_name: str, alpha: int = 255) -> pygame.surface.Surface:
+    image = pygame.image.load(SPRITE_PATH / f"{image_name}.png").copy()
+    image.fill((255, 255, 255, alpha), None, pygame.BLEND_RGBA_MULT)
+    return image
 
 
 def get_screen() -> pygame.Surface:
@@ -120,12 +122,13 @@ def draw_player_cards(
     tile_size: float,
     screen_width: int,
     screen_height: int,
+    alpha: int = 255,
 ) -> None:
     for j, card in enumerate(state.hand):
         if not render_opponent_cards and name == "opponent":
-            card_img = get_image("Card")
+            card_img = get_image("Card", alpha=alpha)
         else:
-            card_img = get_image(card)
+            card_img = get_image(card, alpha=alpha)
         card_img = pygame.transform.scale(card_img, (int(tile_size * (142 / 197)), int(tile_size)))
         # Players with even id go above public cards
         if name == "opponent":
@@ -189,10 +192,13 @@ def render(
 
     font = pygame.font.SysFont("arial", 22)
     for idx, (name, state) in enumerate(player_states.items()):
+        alpha = 128 if turn != idx else 255
         # Load and blit text for player name
 
-        # Only render the most recent move when you are not about to make a new move
-        move = move_to_str[most_recent_move[idx]] if turn != idx else ""
+        # Only render the most recent move when you are not about to make a new move (or if you've just folded)
+        move = (
+            move_to_str[most_recent_move[idx]] if turn != idx or most_recent_move[idx] == 0 else ""
+        )
         text = font.render(move, True, WHITE)
         textRect = text.get_rect()
         if name == "opponent":
@@ -231,6 +237,7 @@ def render(
             tile_size=tile_size,
             screen_width=screen_width,
             screen_height=screen_height,
+            alpha=alpha,
         )
 
     # Load and blit public cards
@@ -337,12 +344,7 @@ def calculate_offset(hand: List, j: int, tile_size: float):
     return int((len(hand) * (tile_size * 23 / 56)) - ((j) * (tile_size * 23 / 28)))
 
 
-def draw_chips(
-    screen: pygame.surface.Surface,
-    n_chips: int,
-    x_pos: int,
-    y_pos: int,
-):
+def draw_chips(screen: pygame.surface.Surface, n_chips: int, x_pos: int, y_pos: int):
 
     font = pygame.font.SysFont("arial", 20)
     text = font.render(str(n_chips), True, WHITE)
@@ -358,7 +360,7 @@ def draw_chips(
         chip_info.number = int(num)
         n_chips %= chip_info.value
 
-        chip_img = get_image(chip_info.img)
+        chip_img = get_image(chip_info.img, alpha=255)
         chip_img = pygame.transform.scale(chip_img, (int(tile_size / 2), int(tile_size * 16 / 45)))
 
         for j in range(chip_info.number):
