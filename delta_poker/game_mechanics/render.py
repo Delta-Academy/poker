@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
-
 import pygame
 import pygame.gfxdraw
 from delta_poker.game_mechanics.state import State
@@ -116,7 +115,6 @@ def render(
     player_states: Dict[str, State],
     most_recent_move: Dict,
     render_opponent_cards: bool = True,
-    show_player_names: bool = True,
     continue_hands: bool = True,
     win_message: Optional[str] = None,
 ) -> None:
@@ -143,7 +141,7 @@ def render(
                 card_img, (int(tile_size * (142 / 197)), int(tile_size))
             )
             # Players with even id go above public cards
-            if i % 2 == 0:
+            if name == "opponent":
                 screen.blit(
                     card_img,
                     (
@@ -184,13 +182,9 @@ def render(
 
         move = move_map[most_recent_move[i]]
 
-        if show_player_names:
-            text = font.render(f"{name}: move = {move}", True, WHITE)
-        else:
-            text = font.render(f"move = {move}", True, WHITE)
-
+        text = font.render(move, True, WHITE)
         textRect = text.get_rect()
-        if i % 2 == 0:
+        if name == "opponent":
             textRect.center = (
                 (screen_width / (np.ceil(len(player_states) / 2) + 1) * np.ceil((i + 1) / 2)),
                 calculate_height(screen_height, 4, 1, tile_size, -(22 / 20)),
@@ -203,12 +197,18 @@ def render(
         screen.blit(text, textRect)
 
         x_pos, y_pos = get_player_chip_position(
-            player_idx=i,
+            player_idx=0 if name == "opponent" else 1,
             screen_width=screen_width,
             screen_height=screen_height,
         )
 
-        draw_chips(screen=screen, x_pos=x_pos, y_pos=y_pos, n_chips=state.player_chips)
+        draw_chips(
+            screen=screen,
+            x_pos=x_pos,
+            y_pos=y_pos,
+            # n_chips=player_states[list(player_states.keys())[0]]["pot"],
+            n_chips=state["my_chips"],
+        )
 
     # Load and blit public cards
     public_cards = player_states["player"].public_cards
@@ -287,6 +287,7 @@ def calculate_card_width(idx: int, screen_width: int, tile_size: float, n_agents
 def get_player_chip_position(
     player_idx: int, screen_width: int, screen_height: int
 ) -> Tuple[int, int]:
+
     tile_size = get_tile_size(screen_height)
 
     if player_idx % 2 == 0:
@@ -319,6 +320,7 @@ def draw_chips(
     x_pos: int,
     y_pos: int,
 ):
+
     font = pygame.font.SysFont("arial", 20)
     text = font.render(str(n_chips), True, WHITE)
     textRect = text.get_rect()

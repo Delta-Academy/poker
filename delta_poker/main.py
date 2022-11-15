@@ -76,10 +76,11 @@ if __name__ == "__main__":
 
     choose_move_no_network = choose_move_randomly
     # Challenge your bot to a game of poker!
-    play_poker(
-        your_choose_move=human_player,
-        opponent_choose_move=choose_move_randomly,
-        game_speed_multiplier=100,
-        render=True,
-        verbose=True,
-    )
+    for _ in range(100):
+        play_poker(
+            your_choose_move=human_player,
+            opponent_choose_move=choose_move_randomly,
+            game_speed_multiplier=1,
+            render=True,
+            verbose=False,
+        )
