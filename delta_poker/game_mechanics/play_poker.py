@@ -23,9 +23,7 @@ def play_poker(
         game_speed_multiplier=game_speed_multiplier,
     )
 
-    observation, reward, done, info = env.reset()
+    state, reward, done, info = env.reset()
     while not done:
-        action = your_choose_move(observation)
-        observation, reward, done, info = env.step(action)
-        print("reward", reward)
-        print("\n")
+        action = your_choose_move(state)
+        state, reward, done, info = env.step(action)
