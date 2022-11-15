@@ -253,6 +253,7 @@ class PokerEnv:
             win_message=win_message,
             screen=self.subsurf,
             continue_hands=not self.game_over,
+            turn=self.turn,
         )
         self.draw_additional()
 
@@ -265,7 +266,7 @@ class PokerEnv:
             self.STARTING_MONEY * 2,
         )
 
-        draw_possible_actions(self._screen, self._font, self.player_state)
+        draw_possible_actions(self._screen, self._font, self.player_state, turn=self.turn)
 
         pygame.display.update()
         self._clock.tick(int(self.game_speed_multiplier))

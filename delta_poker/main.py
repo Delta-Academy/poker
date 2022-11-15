@@ -80,7 +80,7 @@ if __name__ == "__main__":
         play_poker(
             your_choose_move=human_player,
             opponent_choose_move=choose_move_randomly,
-            game_speed_multiplier=1,
+            game_speed_multiplier=0.5,
             render=True,
             verbose=False,
         )
