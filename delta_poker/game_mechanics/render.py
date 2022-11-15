@@ -168,6 +168,7 @@ def render(
     continue_hands: bool = True,
     win_message: Optional[str] = None,
     turn: Optional[int] = None,
+    full_raise_size: Optional[int] = None,
 ) -> None:
     """player_states is a dict of player_id: player_state."""
 
@@ -185,20 +186,26 @@ def render(
         None: "",
         0: "fold",
         1: "call/check",
-        2: "raise",
-        3: "raise",
+        2: "raise half",
+        3: "raise full",
         4: "all in",
     }
 
     font = pygame.font.SysFont("arial", 22)
     for idx, (name, state) in enumerate(player_states.items()):
-        alpha = 128 if turn != idx else 255
+        alpha = 128 if turn != idx and win_message is None else 255
         # Load and blit text for player name
 
         # Only render the most recent move when you are not about to make a new move (or if you've just folded)
         move = (
             move_to_str[most_recent_move[idx]] if turn != idx or most_recent_move[idx] == 0 else ""
         )
+
+        if move == "raise half" and full_raise_size is not None:
+            move = f"raise {full_raise_size // 2}"
+        elif move == "raise full" and full_raise_size is not None:
+            move = f"raise {full_raise_size}"
+
         text = font.render(move, True, WHITE)
         textRect = text.get_rect()
         if name == "opponent":

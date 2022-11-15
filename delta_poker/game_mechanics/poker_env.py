@@ -51,6 +51,7 @@ class PokerEnv:
         }
 
         self.env_reset = False
+        self.full_raise_size = None
         if render:
             pygame.init()
             self._font = pygame.font.SysFont("arial", 18)
@@ -182,7 +183,6 @@ class PokerEnv:
         if self.verbose:
             self.print_action(move)
 
-        prev_turn = self.turn
         self.game.step(Action(move))
         # assert prev_turn != self.turn, "Turn did not change!"
 
@@ -253,7 +253,9 @@ class PokerEnv:
             screen=self.subsurf,
             continue_hands=not self.game_over,
             turn=self.turn,
+            full_raise_size=self.full_raise_size,
         )
+
         self.draw_additional()
 
     def draw_additional(self) -> None:
@@ -265,6 +267,9 @@ class PokerEnv:
             self.STARTING_MONEY * 2,
         )
 
+        # Need to store the current raise size on the buttons, so can set it
+        # to most recent action
+        self.full_raise_size = self.player_state.player_chips + self.player_state.opponent_chips
         draw_possible_actions(self._screen, self._font, self.player_state, turn=self.turn)
 
         pygame.display.update()
