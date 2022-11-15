@@ -1,4 +1,5 @@
 import numpy as np
+from torch import nn
 
 from check_submission import check_submission
 from game_mechanics import (
@@ -11,7 +12,6 @@ from game_mechanics import (
     play_poker,
     save_network,
 )
-from torch import nn
 
 TEAM_NAME = "Team Namee"  # <---- Enter your team name here!
 assert TEAM_NAME != "Team Name", "Please change your TEAM_NAME!"

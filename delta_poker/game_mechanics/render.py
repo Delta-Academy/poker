@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import pygame
 import pygame.gfxdraw
+
 from delta_poker.game_mechanics.state import State
 
 BLACK_COLOR = (21, 26, 26)
