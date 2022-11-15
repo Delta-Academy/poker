@@ -3,7 +3,6 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import pygame
-
 from game_mechanics.render import (
     MOVE_MAP,
     draw_both_chip_stacks,
