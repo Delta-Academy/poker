@@ -1,7 +1,7 @@
 from typing import Callable
 
-from delta_poker.game_mechanics.poker_env import PokerEnv
-from delta_poker.game_mechanics.render import human_player
+from game_mechanics.poker_env import PokerEnv
+from game_mechanics.render import human_player
 
 
 def play_poker(

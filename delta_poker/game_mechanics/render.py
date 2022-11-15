@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pygame
 import pygame.gfxdraw
 
-from delta_poker.game_mechanics.state import State
+from game_mechanics.state import State
 
 BLACK_COLOR = (21, 26, 26)
 WHITE_COLOR = (255, 255, 255)
@@ -111,27 +111,14 @@ def get_tile_size(screen_height) -> float:
     return screen_height / 5
 
 
-def render(
+def draw_player_cards(
     screen: pygame.Surface,
-    player_states: Dict[str, State],
-    most_recent_move: Dict,
-    render_opponent_cards: bool = True,
-    continue_hands: bool = True,
-    win_message: Optional[str] = None,
-) -> None:
-    """player_states is a dict of player_id: player_state."""
-
-    # Use me for external screen injection
-    # mode = "human"
-    screen_height = screen.get_height()
-    screen_width = screen.get_width()
-    tile_size = get_tile_size(screen_height)
-
-    # Setup dimensions for card size and setup for colors
-    screen.fill(BG_COLOR)
-
-    # Load and blit all images for each card in each player's hand
-
+    player_states: Dict,
+    render_opponent_cards: bool,
+    tile_size: float,
+    screen_width: int,
+    screen_height: int,
+):
     for i, (name, state) in enumerate(player_states.items()):
         for j, card in enumerate(state.hand):
             if not render_opponent_cards and name == "opponent":
@@ -170,6 +157,29 @@ def render(
                     ),
                 )
 
+
+def render(
+    screen: pygame.Surface,
+    player_states: Dict[str, State],
+    most_recent_move: Dict,
+    render_opponent_cards: bool = True,
+    continue_hands: bool = True,
+    win_message: Optional[str] = None,
+) -> None:
+    """player_states is a dict of player_id: player_state."""
+
+    # Use me for external screen injection
+    # mode = "human"
+    screen_height = screen.get_height()
+    screen_width = screen.get_width()
+    tile_size = get_tile_size(screen_height)
+
+    # Setup dimensions for card size and setup for colors
+    screen.fill(BG_COLOR)
+
+    # Load and blit all images for each card in each player's hand
+
+    for i, (name, state) in enumerate(player_states.items()):
         # Load and blit text for player name
         font = pygame.font.SysFont("arial", 22)
         move_map: Dict[Optional[int], str] = {
@@ -208,8 +218,17 @@ def render(
             x_pos=x_pos,
             y_pos=y_pos,
             # n_chips=player_states[list(player_states.keys())[0]]["pot"],
-            n_chips=state["my_chips"],
+            n_chips=state.player_chips,
         )
+
+    draw_player_cards(
+        screen=screen,
+        player_states=player_states,
+        render_opponent_cards=render_opponent_cards,
+        tile_size=tile_size,
+        screen_width=screen_width,
+        screen_height=screen_height,
+    )
 
     # Load and blit public cards
     public_cards = player_states["player"].public_cards

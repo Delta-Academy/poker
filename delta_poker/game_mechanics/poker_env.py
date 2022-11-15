@@ -4,17 +4,18 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import pygame
 
-from delta_poker.game_mechanics.render import (
+from game_mechanics.render import (
     MOVE_MAP,
     draw_both_chip_stacks,
+    draw_chips,
     draw_possible_actions,
     get_screen,
     get_screen_subsurface,
     render,
     wait_for_click,
 )
-from delta_poker.game_mechanics.state import State
-from delta_poker.game_mechanics.utils import choose_move_randomly
+from game_mechanics.state import State
+from game_mechanics.utils import choose_move_randomly
 from rlcard.games.nolimitholdem import Action
 from rlcard.games.nolimitholdem.game import NolimitholdemGame
 
@@ -107,44 +108,44 @@ class PokerEnv:
     #     continue_hands=False,
     # )
 
-    def render_game(
-        self,
-        render_opponent_cards: bool = False,
-        win_message: Optional[str] = None,
-    ) -> None:
+    # def render_game(
+    #     self,
+    #     render_opponent_cards: bool = False,
+    #     win_message: Optional[str] = None,
+    # ) -> None:
 
-        self._screen.fill((7, 99, 36))  # green background
-        render(
-            player_states={"player": self.player_state, "opponent": self.opponent_state},
-            most_recent_move=self.most_recent_move,
-            render_opponent_cards=render_opponent_cards,
-            win_message=win_message,
-            screen=self.subsurf,
-            continue_hands=not self.game_over,
-        )
+    #     self._screen.fill((7, 99, 36))  # green background
+    #     render(
+    #         player_states={"player": self.player_state, "opponent": self.opponent_state},
+    #         most_recent_move=self.most_recent_move,
+    #         render_opponent_cards=render_opponent_cards,
+    #         win_message=win_message,
+    #         screen=self.subsurf,
+    #         continue_hands=not self.game_over,
+    #     )
 
-        # TODO:
-        possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
-        player_chips = int(possible_chips(self.player_total)) - self.player_state["my_chips"]
-        opponent_chips = int(possible_chips(self.opponent_total)) - self.opponent_state["my_chips"]
+    #     # TODO:
+    #     possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
+    #     player_chips = int(possible_chips(self.player_total)) - self.player_state.chips
+    #     opponent_chips = int(possible_chips(self.opponent_total)) - self.opponent_state["my_chips"]
 
-        draw_chips(
-            screen=self._screen,
-            n_chips=opponent_chips,
-            x_pos=0,
-            y_pos=int(FULL_HEIGHT * 0.2),
-        )
-        draw_chips(
-            screen=self._screen,
-            n_chips=player_chips,
-            x_pos=0,
-            y_pos=int(FULL_HEIGHT * 0.66),
-        )
+    #     draw_chips(
+    #         screen=self._screen,
+    #         n_chips=opponent_chips,
+    #         x_pos=0,
+    #         y_pos=int(FULL_HEIGHT * 0.2),
+    #     )
+    #     draw_chips(
+    #         screen=self._screen,
+    #         n_chips=player_chips,
+    #         x_pos=0,
+    #         y_pos=int(FULL_HEIGHT * 0.66),
+    #     )
 
-        self.draw_possible_actions()
+    #     self.draw_possible_actions()
 
-        pygame.display.update()
-        time.sleep(1 / self.game_speed_multiplier)
+    #     pygame.display.update()
+    #     time.sleep(1 / self.game_speed_multiplier)
 
     @property
     def legal_moves(self) -> List[int]:
@@ -210,6 +211,7 @@ class PokerEnv:
                 reward += self.complete_hand()
 
         if self.render:
+
             # If the opponent folds on the first hand, win message
             win_message = f"You won {int(abs(self.reward))} chips" if self.done else None
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
@@ -296,18 +298,24 @@ class PokerEnv:
     ) -> None:
 
         self._screen.fill((7, 99, 36))  # green background
+
         render(
             player_states={"player": self.player_state, "opponent": self.opponent_state},
             most_recent_move=self.most_recent_move,
             render_opponent_cards=render_opponent_cards,
             win_message=win_message,
             screen=self.subsurf,
-            show_player_names=True,
             continue_hands=not self.game_over,
         )
+        self.draw_additional()
+
+    def draw_additional(self) -> None:
 
         draw_both_chip_stacks(
-            self._screen, self.player_total, self.opponent_total, self.STARTING_MONEY * 2
+            self._screen,
+            self.player_total - self.player_state.player_chips,
+            self.opponent_total - self.opponent_state.player_chips,
+            self.STARTING_MONEY * 2,
         )
 
         draw_possible_actions(self._screen, self._font, self.player_state)

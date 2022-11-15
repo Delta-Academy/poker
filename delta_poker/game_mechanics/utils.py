@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Callable
 
 import torch
-from delta_poker.game_mechanics.state import State
 from torch import nn
+
+from game_mechanics.state import State
 
 HERE = Path(__file__).parent.parent.resolve()
 
