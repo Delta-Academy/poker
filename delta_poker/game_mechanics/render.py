@@ -218,7 +218,6 @@ def render(
                 (screen_width / (np.ceil(len(player_states) / 2) + 1) * np.ceil((idx + 1) / 2)),
                 calculate_height(screen_height, 4, 3, tile_size, (23 / 20)),
             )
-
         screen.blit(text, textRect)
 
         x_pos, y_pos = get_player_chip_position(
@@ -227,12 +226,18 @@ def render(
             screen_height=screen_height,
         )
 
-        draw_chips(
+        draw_chips(screen=screen, x_pos=x_pos, y_pos=y_pos, n_chips=state.player_chips)
+
+        draw_player_cards(
             screen=screen,
-            x_pos=x_pos,
-            y_pos=y_pos,
-            # n_chips=player_states[list(player_states.keys())[0]]["pot"],
-            n_chips=state.player_chips,
+            state=state,
+            name=name,
+            idx=idx,
+            render_opponent_cards=render_opponent_cards,
+            tile_size=tile_size,
+            screen_width=screen_width,
+            screen_height=screen_height,
+            alpha=alpha,
         )
 
         draw_player_cards(
@@ -324,7 +329,6 @@ def calculate_card_width(idx: int, screen_width: int, tile_size: float, n_agents
 def get_player_chip_position(
     player_idx: int, screen_width: int, screen_height: int
 ) -> Tuple[int, int]:
-
     tile_size = get_tile_size(screen_height)
 
     if player_idx % 2 == 0:

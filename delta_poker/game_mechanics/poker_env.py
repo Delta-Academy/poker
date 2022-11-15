@@ -29,7 +29,6 @@ class PokerEnv:
         render: bool = False,
         game_speed_multiplier: float = 1.0,
     ):
-
         self.opponent_choose_move = opponent_choose_move
         self.render = render
         self.verbose = verbose
@@ -131,7 +130,6 @@ class PokerEnv:
             "player_chips": [self.player_total, self.opponent_total],
             "dealer_id": self.dealer,
         }
-
         self.game.configure(game_config)
         self.game.init_game()
 
@@ -158,7 +156,6 @@ class PokerEnv:
                 reward += self.complete_hand()
 
         if self.render:
-
             # If the opponent folds on the first hand, win message
             win_message = f"You won {int(abs(self.reward))} chips" if self.done else None
             self.render_game(render_opponent_cards=win_message is not None, win_message=win_message)
@@ -244,7 +241,6 @@ class PokerEnv:
     ) -> None:
 
         self._screen.fill((7, 99, 36))  # green background
-
         render(
             player_states={"player": self.player_state, "opponent": self.opponent_state},
             most_recent_move=self.most_recent_move,
