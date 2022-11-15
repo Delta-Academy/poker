@@ -94,59 +94,6 @@ class PokerEnv:
     def hand_done(self) -> bool:
         return self.game.is_over()
 
-    # def render_game_tournament(
-    #     self, screen: pygame.surface.Surface, win_message: Optional[str]
-    # ) -> None:
-    #     """Inject a screen and render the table without buttons for the tournament."""
-
-    # self.env.render(
-    #     most_recent_move=self.most_recent_move,
-    #     render_opponent_cards=True,
-    #     win_message=win_message,
-    #     screen=screen,
-    #     show_player_names=False,
-    #     continue_hands=False,
-    # )
-
-    # def render_game(
-    #     self,
-    #     render_opponent_cards: bool = False,
-    #     win_message: Optional[str] = None,
-    # ) -> None:
-
-    #     self._screen.fill((7, 99, 36))  # green background
-    #     render(
-    #         player_states={"player": self.player_state, "opponent": self.opponent_state},
-    #         most_recent_move=self.most_recent_move,
-    #         render_opponent_cards=render_opponent_cards,
-    #         win_message=win_message,
-    #         screen=self.subsurf,
-    #         continue_hands=not self.game_over,
-    #     )
-
-    #     # TODO:
-    #     possible_chips = lambda total: min(max(0, total), self.STARTING_MONEY * 2)
-    #     player_chips = int(possible_chips(self.player_total)) - self.player_state.chips
-    #     opponent_chips = int(possible_chips(self.opponent_total)) - self.opponent_state["my_chips"]
-
-    #     draw_chips(
-    #         screen=self._screen,
-    #         n_chips=opponent_chips,
-    #         x_pos=0,
-    #         y_pos=int(FULL_HEIGHT * 0.2),
-    #     )
-    #     draw_chips(
-    #         screen=self._screen,
-    #         n_chips=player_chips,
-    #         x_pos=0,
-    #         y_pos=int(FULL_HEIGHT * 0.66),
-    #     )
-
-    #     self.draw_possible_actions()
-
-    #     pygame.display.update()
-    #     time.sleep(1 / self.game_speed_multiplier)
-
     @property
     def legal_moves(self) -> List[int]:
         # TODO: Is this even necessary?
