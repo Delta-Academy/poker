@@ -1,3 +1,6 @@
+# Profiling
+*.prof
+
 # IDE helpers
 .idea
 .vscode
