@@ -36,6 +36,17 @@ class State:
 
 
 def to_basic_nn_input(state: State) -> torch.Tensor:
+    """Convert a state to a basic neural network input. Expresses the state as a 1D tensor of length
+    55 where:
+
+    - The first 52 elements are the cards visible to the player.
+      If the card is in the player's hand it is 1.
+      If it is in the public cards it is -1
+    - The next 2 elements are the player's chips and opponent's chips
+      that have been bet on that hand (i.e. the pot) (normalised between -1 and 1)
+    - The final element is the total number of chips the player has remaining in the game
+      (normalised between -1 and 1)
+    """
     nn_input = torch.zeros(55)
     suits = ["C", "D", "H", "S"]
     ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
@@ -43,7 +54,7 @@ def to_basic_nn_input(state: State) -> torch.Tensor:
         nn_input[13 * suits.index(card[0]) + ranks.index(card[1])] = 1
     for card in state.public_cards:
         nn_input[13 * suits.index(card[0]) + ranks.index(card[1])] = -1
-    nn_input[52] = state.player_chips / 100
-    nn_input[53] = state.opponent_chips / 100
+    nn_input[52] = state.player_chips / 100 - 1
+    nn_input[53] = state.opponent_chips / 100 - 1
     nn_input[54] = (state.player_chips_remaining / 100) - 1
     return nn_input

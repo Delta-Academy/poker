@@ -3,7 +3,7 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import pygame
-from delta_poker.game_mechanics.render import (
+from game_mechanics.render import (
     MOVE_MAP,
     draw_both_chip_stacks,
     draw_possible_actions,
@@ -12,8 +12,8 @@ from delta_poker.game_mechanics.render import (
     render,
     wait_for_click,
 )
-from delta_poker.game_mechanics.state import State
-from delta_poker.game_mechanics.utils import choose_move_randomly
+from game_mechanics.state import State
+from game_mechanics.utils import choose_move_randomly
 from rlcard.games.nolimitholdem import Action
 from rlcard.games.nolimitholdem.game import NolimitholdemGame
 
@@ -43,7 +43,7 @@ class PokerEnv:
         self.player_agent = 0
         self.opponent_agent = 1
 
-        self.most_recent_move: Dict[int, Optional[int]] = {
+        self.most_recent_move: Dict[int, Optional[str]] = {
             self.player_agent: None,
             self.opponent_agent: None,
         }
@@ -58,24 +58,24 @@ class PokerEnv:
 
     @property
     def turn(self) -> int:
-        # I THINK
         return self.game.game_pointer
 
     @property
     def player_state(self) -> State:
-        # The state is actually quite a nice rich dictionary here,
-        # we could leave it up to users how to represent it?
+        """The internal state is a rich dictionary. We represent it to users as a State object.
 
-        # "hand": [card1, card2], in format S2 for 2 of spades (Suit, Rank) where 10 is T
-        #  (A, 2 -> 9, T, J, Q, K)
-        # "public_cards": [card1, card2, card3, card4, card5]
-        # "all_chips": [player_chips, opponent_chips]
-        # "my_chips": [player_chips]
-        # "legal_actions": [0, 1, 2, 3, 4] as Action enum objects
-        # "stakes": [player_chips_remaining, opponent_chips_remaining]
-        # "current_player": 0 or 1
-        # "pot": sum of all chips in pot
-        # "stage": 0, 1, 2, 3, 4
+        Leave it up to users how to represent it to the network
+        "hand": [card1, card2], in format S2 for 2 of spades (Suit, Rank) where 10 is T
+            (A, 2 -> 9, T, J, Q, K)
+        "public_cards": [card1, card2, card3, card4, card5]
+        "all_chips": [player_chips, opponent_chips]
+        "my_chips": [player_chips]
+        "legal_actions": [0, 1, 2, 3, 4] as Action enum objects
+        "stakes": [player_chips_remaining, opponent_chips_remaining]
+        "current_player": 0 or 1
+        "pot": sum of all chips in pot
+        "stage": 0, 1, 2, 3, 4
+        """
 
         return State.from_dict(self.game.get_state(self.player_agent))
 
@@ -91,24 +91,8 @@ class PokerEnv:
     def hand_done(self) -> bool:
         return self.game.is_over()
 
-    # def render_game_tournament(
-    #     self, screen: pygame.surface.Surface, win_message: Optional[str]
-    # ) -> None:
-    #     """Inject a screen and render the table without buttons for the tournament."""
-
-    # self.env.render(
-    #     most_recent_move=self.most_recent_move,
-    #     render_opponent_cards=True,
-    #     win_message=win_message,
-    #     screen=screen,
-    #     show_player_names=False,
-    #     continue_hands=False,
-    # )
-
     @property
     def legal_moves(self) -> List[int]:
-        # TODO: Is this even necessary?
-        """Make this is correct for the currently player."""
         return [action.value for action in self.game.get_legal_actions()]
 
     @property
@@ -158,7 +142,7 @@ class PokerEnv:
         }
 
         if self.verbose:
-            print("Starting new hand")
+            print("starting game")
 
         # Take a step if opponent goes first, so step() starts with player
         if self.turn == self.opponent_agent:
@@ -182,17 +166,29 @@ class PokerEnv:
         else:
             print(f"{player} {MOVE_MAP[action]}")
 
+    def update_most_recent_move(self, move: int) -> None:
+        pot_size = self.player_state.player_chips + self.player_state.opponent_chips
+        if move == 2:
+            move_str = f"raise {pot_size//2}"
+        elif move == 3:
+            move_str = f"raise {pot_size}"
+        else:
+            move_str = MOVE_MAP[move]
+
+        self.most_recent_move[self.turn] = move_str
+
     def _step(self, move: int) -> None:
         assert self.env_reset, "You need reset the environment before taking your first step!"
         assert not self.done, "Game is done! Please reset() the env before calling step() again"
-        assert move in self.legal_moves, f"{move} is an illegal move"
+        assert (
+            move in self.legal_moves
+        ), f"{move} is an illegal move. Legal moves: {self.legal_moves}"
 
-        self.most_recent_move[self.turn] = move
+        self.update_most_recent_move(move)
 
         if self.verbose:
             self.print_action(move)
 
-        prev_turn = self.turn
         self.game.step(Action(move))
         # assert prev_turn != self.turn, "Turn did not change!"
 
@@ -260,15 +256,24 @@ class PokerEnv:
             render_opponent_cards=render_opponent_cards,
             win_message=win_message,
             screen=self.subsurf,
-            show_player_names=True,
             continue_hands=not self.game_over,
+            turn=self.turn,
         )
+
+        self.draw_additional()
+
+    def draw_additional(self) -> None:
 
         draw_both_chip_stacks(
-            self._screen, self.player_total, self.opponent_total, self.STARTING_MONEY * 2
+            self._screen,
+            self.player_total - self.player_state.player_chips,
+            self.opponent_total - self.opponent_state.player_chips,
+            self.STARTING_MONEY * 2,
         )
 
-        draw_possible_actions(self._screen, self._font, self.player_state)
+        # Need to store the current raise size on the buttons, so can set it
+        # to most recent action
+        draw_possible_actions(self._screen, self._font, self.player_state, turn=self.turn)
 
         pygame.display.update()
         self._clock.tick(int(self.game_speed_multiplier))

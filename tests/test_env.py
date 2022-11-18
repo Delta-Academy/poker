@@ -26,11 +26,9 @@ def test_random_games_returns():
 
         while not env.done:
             action = choose_move_randomly(state)
-            print(state, "\n", action, "\n", env.turn)
             state, reward, done, info = env.step(action)
             total_reward += reward
             if action == 0:
-                print("I folded")
                 assert reward <= 0
 
         assert total_reward in {-100, 100}

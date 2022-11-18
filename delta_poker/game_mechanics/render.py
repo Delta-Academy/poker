@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-
 import pygame
 import pygame.gfxdraw
-from delta_poker.game_mechanics.state import State
+
+from game_mechanics.state import State
 
 BLACK_COLOR = (21, 26, 26)
 WHITE_COLOR = (255, 255, 255)
@@ -88,8 +88,10 @@ def click_in_button(pos: Tuple[int, int], idx: int) -> bool:
     return x_pos < pos[0] < x_pos + BUTTON_DIM and y_pos < pos[1] < y_pos + BUTTON_DIM
 
 
-def get_image(image_name: str) -> pygame.surface.Surface:
-    return pygame.image.load(SPRITE_PATH / f"{image_name}.png")
+def get_image(image_name: str, alpha: int = 255) -> pygame.surface.Surface:
+    image = pygame.image.load(SPRITE_PATH / f"{image_name}.png").copy()
+    image.fill((255, 255, 255, alpha), None, pygame.BLEND_RGBA_MULT)
+    return image
 
 
 def get_screen() -> pygame.Surface:
@@ -111,14 +113,61 @@ def get_tile_size(screen_height) -> float:
     return screen_height / 5
 
 
+def draw_player_cards(
+    screen: pygame.Surface,
+    state: State,
+    name: str,
+    idx: int,
+    render_opponent_cards: bool,
+    tile_size: float,
+    screen_width: int,
+    screen_height: int,
+    alpha: int = 255,
+) -> None:
+    for j, card in enumerate(state.hand):
+        if not render_opponent_cards and name == "opponent":
+            card_img = get_image("Card", alpha=alpha)
+        else:
+            card_img = get_image(card, alpha=alpha)
+        card_img = pygame.transform.scale(card_img, (int(tile_size * (142 / 197)), int(tile_size)))
+        # Players with even id go above public cards
+        if name == "opponent":
+            screen.blit(
+                card_img,
+                (
+                    (
+                        calculate_card_width(
+                            idx=idx, screen_width=screen_width, tile_size=tile_size
+                        )
+                        - calculate_offset(state.hand, j, tile_size)
+                    ),
+                    calculate_height(screen_height, 4, 1, tile_size, -1),
+                ),
+            )
+        # Players with odd id go below public cards
+        else:
+            screen.blit(
+                card_img,
+                (
+                    (
+                        calculate_card_width(
+                            idx=idx, screen_width=screen_width, tile_size=tile_size
+                        )
+                        - calculate_offset(state.hand, j, tile_size)
+                    ),
+                    calculate_height(screen_height, 4, 3, tile_size, 0),
+                ),
+            )
+
+
 def render(
     screen: pygame.Surface,
     player_states: Dict[str, State],
-    most_recent_move: Dict,
+    most_recent_move: Dict[int, str],
     render_opponent_cards: bool = True,
-    show_player_names: bool = True,
     continue_hands: bool = True,
     win_message: Optional[str] = None,
+    turn: Optional[int] = None,
 ) -> None:
     """player_states is a dict of player_id: player_state."""
 
@@ -132,87 +181,72 @@ def render(
     screen.fill(BG_COLOR)
 
     # Load and blit all images for each card in each player's hand
+    move_to_str: Dict[Optional[int], str] = {
+        None: "",
+        0: "fold",
+        1: "call/check",
+        2: "raise half",
+        3: "raise full",
+        4: "all in",
+    }
 
-    for i, (name, state) in enumerate(player_states.items()):
-        for j, card in enumerate(state.hand):
-            if not render_opponent_cards and name == "opponent":
-                card_img = get_image("Card")
-            else:
-                card_img = get_image(card)
-            card_img = pygame.transform.scale(
-                card_img, (int(tile_size * (142 / 197)), int(tile_size))
-            )
-            # Players with even id go above public cards
-            if i % 2 == 0:
-                screen.blit(
-                    card_img,
-                    (
-                        (
-                            calculate_card_width(
-                                idx=i, screen_width=screen_width, tile_size=tile_size
-                            )
-                            - calculate_offset(state.hand, j, tile_size)
-                        ),
-                        calculate_height(screen_height, 4, 1, tile_size, -1),
-                    ),
-                )
-            # Players with odd id go below public cards
-            else:
-                screen.blit(
-                    card_img,
-                    (
-                        (
-                            calculate_card_width(
-                                idx=i, screen_width=screen_width, tile_size=tile_size
-                            )
-                            - calculate_offset(state.hand, j, tile_size)
-                        ),
-                        calculate_height(screen_height, 4, 3, tile_size, 0),
-                    ),
-                )
-
+    font = pygame.font.SysFont("arial", 22)
+    for idx, (name, state) in enumerate(player_states.items()):
+        alpha = 128 if turn != idx and win_message is None else 255
         # Load and blit text for player name
-        font = pygame.font.SysFont("arial", 22)
-        move_map: Dict[Optional[int], str] = {
-            None: "",
-            0: "fold",
-            1: "call/check",
-            2: "raise",
-            3: "raise",
-            4: "all in",
-        }
 
-        move = move_map[most_recent_move[i]]
+        # Only render the most recent move when you are not about to make a new move (or if you've just folded)
+        move = most_recent_move[idx] if turn != idx or most_recent_move[idx] == "fold" else ""
 
-        if show_player_names:
-            text = font.render(f"{name}: move = {move}", True, WHITE)
-        else:
-            text = font.render(f"move = {move}", True, WHITE)
-
+        text = font.render(move, True, WHITE)
         textRect = text.get_rect()
-        if i % 2 == 0:
+        if name == "opponent":
             textRect.center = (
-                (screen_width / (np.ceil(len(player_states) / 2) + 1) * np.ceil((i + 1) / 2)),
+                (screen_width / (np.ceil(len(player_states) / 2) + 1) * np.ceil((idx + 1) / 2)),
                 calculate_height(screen_height, 4, 1, tile_size, -(22 / 20)),
             )
         else:
             textRect.center = (
-                (screen_width / (np.ceil(len(player_states) / 2) + 1) * np.ceil((i + 1) / 2)),
+                (screen_width / (np.ceil(len(player_states) / 2) + 1) * np.ceil((idx + 1) / 2)),
                 calculate_height(screen_height, 4, 3, tile_size, (23 / 20)),
             )
         screen.blit(text, textRect)
 
         x_pos, y_pos = get_player_chip_position(
-            player_idx=i,
+            player_idx=0 if name == "opponent" else 1,
             screen_width=screen_width,
             screen_height=screen_height,
         )
 
         draw_chips(screen=screen, x_pos=x_pos, y_pos=y_pos, n_chips=state.player_chips)
 
+        draw_player_cards(
+            screen=screen,
+            state=state,
+            name=name,
+            idx=idx,
+            render_opponent_cards=render_opponent_cards,
+            tile_size=tile_size,
+            screen_width=screen_width,
+            screen_height=screen_height,
+            alpha=alpha,
+        )
+
+        draw_player_cards(
+            screen=screen,
+            state=state,
+            name=name,
+            idx=idx,
+            render_opponent_cards=render_opponent_cards,
+            tile_size=tile_size,
+            screen_width=screen_width,
+            screen_height=screen_height,
+            alpha=alpha,
+        )
+
     # Load and blit public cards
     public_cards = player_states["player"].public_cards
-    for i, card in enumerate(public_cards):
+    for idx, card in enumerate(public_cards):
         card_img = get_image(card)
         card_img = pygame.transform.scale(card_img, (int(tile_size * (142 / 197)), int(tile_size)))
         if len(public_cards) <= 3:
@@ -222,20 +256,20 @@ def render(
                     (
                         (
                             ((screen_width / 2) + (tile_size * 31 / 616))
-                            - calculate_offset(public_cards, i, tile_size)
+                            - calculate_offset(public_cards, idx, tile_size)
                         ),
                         calculate_height(screen_height, 2, 1, tile_size, -(1 / 2)),
                     )
                 ),
             )
-        elif i <= 2:
+        elif idx <= 2:
             screen.blit(
                 card_img,
                 (
                     (
                         (
                             ((screen_width / 2) + (tile_size * 31 / 616))
-                            - calculate_offset(state.public_cards[:3], i, tile_size)
+                            - calculate_offset(state.public_cards[:3], idx, tile_size)
                         ),
                         calculate_height(screen_height, 2, 1, tile_size, -21 / 20),
                     )
@@ -248,7 +282,7 @@ def render(
                     (
                         (
                             ((screen_width / 2) + (tile_size * 31 / 616))
-                            - calculate_offset(public_cards[3:], i - 3, tile_size)
+                            - calculate_offset(public_cards[3:], idx - 3, tile_size)
                         ),
                         calculate_height(screen_height, 2, 1, tile_size, 1 / 20),
                     )
@@ -313,12 +347,8 @@ def calculate_offset(hand: List, j: int, tile_size: float):
     return int((len(hand) * (tile_size * 23 / 56)) - ((j) * (tile_size * 23 / 28)))
 
 
-def draw_chips(
-    screen: pygame.surface.Surface,
-    n_chips: int,
-    x_pos: int,
-    y_pos: int,
-):
+def draw_chips(screen: pygame.surface.Surface, n_chips: int, x_pos: int, y_pos: int):
+
     font = pygame.font.SysFont("arial", 20)
     text = font.render(str(n_chips), True, WHITE)
     textRect = text.get_rect()
@@ -333,7 +363,7 @@ def draw_chips(
         chip_info.number = int(num)
         n_chips %= chip_info.value
 
-        chip_img = get_image(chip_info.img)
+        chip_img = get_image(chip_info.img, alpha=255)
         chip_img = pygame.transform.scale(chip_img, (int(tile_size / 2), int(tile_size * 16 / 45)))
 
         for j in range(chip_info.number):
@@ -361,13 +391,13 @@ def draw_both_chip_stacks(
     draw_chips(
         screen=screen,
         n_chips=opponent_chips,
-        x_pos=0,
+        x_pos=int(screen.get_width() * 0.02),
         y_pos=int(FULL_HEIGHT * 0.2),
     )
     draw_chips(
         screen=screen,
         n_chips=player_chips,
-        x_pos=0,
+        x_pos=int(screen.get_width() * 0.02),
         y_pos=int(FULL_HEIGHT * 0.66),
     )
 
@@ -409,7 +439,7 @@ def draw_action(screen, font, action: str, idx: int, legal: bool) -> None:
     render_multi_line_centre(screen, font, action, x_pos, y_pos, font.get_height(), color=color)
 
 
-def draw_possible_actions(screen, font, state: State) -> None:
+def draw_possible_actions(screen, font, state: State, turn) -> None:
     pot_size = state.player_chips + state.opponent_chips
 
     for idx, action in BUTTON_MOVE_MAP.items():
@@ -417,7 +447,7 @@ def draw_possible_actions(screen, font, state: State) -> None:
             action += str(pot_size // 2)
         elif idx == 3:
             action += str(pot_size)
-        draw_action(screen, font, action, idx, idx in state.legal_actions)
+        draw_action(screen, font, action, idx, idx in state.legal_actions and turn == 0)
 
 
 def wait_for_click() -> None:
