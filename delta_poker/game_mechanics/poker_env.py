@@ -3,7 +3,6 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import pygame
-
 from game_mechanics.render import (
     MOVE_MAP,
     draw_both_chip_stacks,
@@ -181,7 +180,9 @@ class PokerEnv:
     def _step(self, move: int) -> None:
         assert self.env_reset, "You need reset the environment before taking your first step!"
         assert not self.done, "Game is done! Please reset() the env before calling step() again"
-        assert move in self.legal_moves, f"{move} is an illegal move"
+        assert (
+            move in self.legal_moves
+        ), f"{move} is an illegal move. Legal moves: {self.legal_moves}"
 
         self.update_most_recent_move(move)
 
