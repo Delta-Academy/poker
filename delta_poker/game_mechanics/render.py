@@ -392,13 +392,13 @@ def draw_both_chip_stacks(
         screen=screen,
         n_chips=opponent_chips,
         x_pos=int(screen.get_width() * 0.02),
-        y_pos=int(FULL_HEIGHT * 0.2),
+        y_pos=int(screen.get_height() * 0.2),
     )
     draw_chips(
         screen=screen,
         n_chips=player_chips,
         x_pos=int(screen.get_width() * 0.02),
-        y_pos=int(FULL_HEIGHT * 0.66),
+        y_pos=int(screen.get_height() * 0.66),
     )
 
 
