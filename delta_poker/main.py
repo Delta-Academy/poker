@@ -15,7 +15,7 @@ from game_mechanics import (
     to_basic_nn_input,
 )
 
-TEAM_NAME = "Team Namee"  # <---- Enter your team name here!
+TEAM_NAME = "Team Name"  # <---- Enter your team name here!
 assert TEAM_NAME != "Team Name", "Please change your TEAM_NAME!"
 
 
@@ -43,7 +43,7 @@ def train() -> nn.Module:
 
     # Train a new model against the checkpoint...
 
-    return nn.Linear(1, 1)
+    raise NotImplementedError("You need to implement this function!")
 
 
 def choose_move(state: State, neural_network: nn.Module) -> int:
@@ -56,7 +56,7 @@ def choose_move(state: State, neural_network: nn.Module) -> int:
     Returns:
         action: Single value drawn from legal_actions
     """
-    return choose_move_randomly(state)
+    raise NotImplementedError("You need to implement this function!")
 
 
 if __name__ == "__main__":
