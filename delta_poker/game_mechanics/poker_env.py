@@ -28,7 +28,6 @@ class PokerEnv:
         verbose: bool = False,
         render: bool = False,
         game_speed_multiplier: float = 1.0,
-        reset_takes_step: bool = True,
     ):
         self.opponent_choose_move = opponent_choose_move
         self.render = render
@@ -39,7 +38,7 @@ class PokerEnv:
         self.player_total = self.opponent_total = self.STARTING_MONEY
 
         # Will be flipped on every hand reset
-        self.dealer = random.choice([0, 1])
+        self.dealer = 0
 
         # Want to get rid of this
         self.player_agent = 0
@@ -51,7 +50,7 @@ class PokerEnv:
         }
 
         self.env_reset = False
-        self.reset_takes_step = reset_takes_step
+        self.reset_takes_step = True
         if render:
             pygame.init()
             self._font = pygame.font.SysFont("arial", 18)
@@ -97,6 +96,10 @@ class PokerEnv:
     @property
     def legal_moves(self) -> List[int]:
         return [action.value for action in self.game.get_legal_actions()]
+
+    def _toggle_reset_takes_step(self) -> None:
+        """Should not be called by students."""
+        self.reset_takes_step = False
 
     @property
     def game_over(self) -> bool:

@@ -196,7 +196,12 @@ def render(
         # Load and blit text for player name
 
         # Only render the most recent move when you are not about to make a new move (or if you've just folded)
-        move = most_recent_move[idx] if turn != idx or most_recent_move[idx] == "fold" else ""
+        move = (
+            most_recent_move[idx]
+            if turn != idx or most_recent_move[idx] in ["fold", "all-in"]
+            else ""
+        )
+        move = most_recent_move[idx]
 
         text = font.render(move, True, WHITE)
         textRect = text.get_rect()
