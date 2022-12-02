@@ -83,7 +83,7 @@ if __name__ == "__main__":
     # Challenge your bot to a game of poker!
     play_poker(
         your_choose_move=human_player,
-        opponent_choose_move=choose_move_randomly,
+        opponent_choose_move=choose_move_no_network,
         game_speed_multiplier=0.5,
         render=True,
         verbose=False,

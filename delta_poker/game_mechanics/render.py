@@ -196,7 +196,12 @@ def render(
         # Load and blit text for player name
 
         # Only render the most recent move when you are not about to make a new move (or if you've just folded)
-        move = most_recent_move[idx] if turn != idx or most_recent_move[idx] == "fold" else ""
+        move = (
+            most_recent_move[idx]
+            if turn != idx or most_recent_move[idx] in ["fold", "all-in"]
+            else ""
+        )
+        move = most_recent_move[idx]
 
         text = font.render(move, True, WHITE)
         textRect = text.get_rect()
@@ -392,13 +397,13 @@ def draw_both_chip_stacks(
         screen=screen,
         n_chips=opponent_chips,
         x_pos=int(screen.get_width() * 0.02),
-        y_pos=int(FULL_HEIGHT * 0.2),
+        y_pos=int(screen.get_height() * 0.2),
     )
     draw_chips(
         screen=screen,
         n_chips=player_chips,
         x_pos=int(screen.get_width() * 0.02),
-        y_pos=int(FULL_HEIGHT * 0.66),
+        y_pos=int(screen.get_height() * 0.66),
     )
 
 

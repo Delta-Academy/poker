@@ -3,6 +3,7 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import pygame
+
 from game_mechanics.render import (
     MOVE_MAP,
     draw_both_chip_stacks,
@@ -37,7 +38,7 @@ class PokerEnv:
         self.player_total = self.opponent_total = self.STARTING_MONEY
 
         # Will be flipped on every hand reset
-        self.dealer = random.choice([0, 1])
+        self.dealer = 0
 
         # Want to get rid of this
         self.player_agent = 0
@@ -49,6 +50,7 @@ class PokerEnv:
         }
 
         self.env_reset = False
+        self.reset_takes_step = True
         if render:
             pygame.init()
             self._font = pygame.font.SysFont("arial", 18)
@@ -94,6 +96,10 @@ class PokerEnv:
     @property
     def legal_moves(self) -> List[int]:
         return [action.value for action in self.game.get_legal_actions()]
+
+    def _toggle_reset_takes_step(self) -> None:
+        """Should not be called by students."""
+        self.reset_takes_step = False
 
     @property
     def game_over(self) -> bool:
@@ -145,7 +151,7 @@ class PokerEnv:
             print("starting game")
 
         # Take a step if opponent goes first, so step() starts with player
-        if self.turn == self.opponent_agent:
+        if self.turn == self.opponent_agent and self.reset_takes_step:
             opponent_move = self.opponent_choose_move(state=self.opponent_state)
             self._step(opponent_move)
             if self.hand_done:
@@ -243,6 +249,24 @@ class PokerEnv:
 
         return reward
 
+    def render_game_tournament(
+        self,
+        screen: pygame.surface.Surface,
+        font: pygame.font.Font,
+        win_message: Optional[str] = None,
+    ) -> None:
+        screen.fill((7, 99, 36))  # green background
+        render(
+            player_states={"player": self.player_state, "opponent": self.opponent_state},
+            most_recent_move=self.most_recent_move,
+            render_opponent_cards=True,
+            win_message=win_message,
+            screen=screen,
+            continue_hands=False,
+            turn=self.turn,
+        )
+        self.draw_additional(screen, font)
+
     def render_game(
         self,
         render_opponent_cards: bool = False,
@@ -260,12 +284,17 @@ class PokerEnv:
             turn=self.turn,
         )
 
-        self.draw_additional()
+        self.draw_additional(self._screen, self._font)
 
-    def draw_additional(self) -> None:
+        pygame.display.update()
+        self._clock.tick(int(self.game_speed_multiplier))
+        if self.game_speed_multiplier < 1:
+            time.sleep((1 / self.game_speed_multiplier) - 1)
+
+    def draw_additional(self, screen: pygame.surface.Surface, font: pygame.font.Font) -> None:
 
         draw_both_chip_stacks(
-            self._screen,
+            screen,
             self.player_total - self.player_state.player_chips,
             self.opponent_total - self.opponent_state.player_chips,
             self.STARTING_MONEY * 2,
@@ -273,9 +302,4 @@ class PokerEnv:
 
         # Need to store the current raise size on the buttons, so can set it
         # to most recent action
-        draw_possible_actions(self._screen, self._font, self.player_state, turn=self.turn)
-
-        pygame.display.update()
-        self._clock.tick(int(self.game_speed_multiplier))
-        if self.game_speed_multiplier < 1:
-            time.sleep((1 / self.game_speed_multiplier) - 1)
+        draw_possible_actions(screen, font, self.player_state, turn=self.turn)
